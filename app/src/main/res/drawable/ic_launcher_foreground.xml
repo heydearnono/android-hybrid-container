@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  占位图标：一个纯矢量的方块，不依赖任何位图资源。
+  adaptive icon 的前景要求 108dp 画布、中间 72dp 为安全区，所以图形画在 (18,18)-(90,90) 内。
+  换成真实品牌图标时替换这个文件即可，manifest 不用改。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,34h40v8h-40z M34,50h40v8h-40z M34,66h24v8h-24z" />
+</vector>

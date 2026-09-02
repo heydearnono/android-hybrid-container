@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# 编辑器 / IDE
+# 放行 codeStyles，让格式约定随仓库走（AI 和人共用同一套）
+.idea/*
+!.idea/codeStyles/
+*.iml
+.vscode/
+
+# Agent 运行时产物（保留项目级配置，忽略本地态）
+.claude/settings.local.json
+.claude/**/local/
+
+# Gradle / AGP 构建产物
+.gradle/
+build/
+captures/
+local.properties
+*.apk
+*.aab
+release/
+output-metadata.json
+
+# Kotlin 2.x 项目级 session 目录
+.kotlin/
+
+# NDK / CMake（当前无 NDK，装了以后会用到）
+.cxx/
+.externalNativeBuild/
+
+# 签名密钥，绝对不能提交
+*.jks
+*.keystore
+keystore.properties
+
+# 诊断产物
+*.hprof
+*.log

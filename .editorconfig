@@ -1,0 +1,24 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+max_line_length = 120
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# 测试方法用反引号写中文名，可读性远高于 camelCase 拼音/英文长句。
+ktlint_standard_function-naming = disabled
+# 多个顶层声明放一个文件是刻意的（如 Outcome.kt 里的扩展函数）。
+ktlint_standard_filename = disabled
+
+[*.{xml,json,yml,yaml,toml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

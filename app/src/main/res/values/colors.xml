@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 :core:designsystem 的 Brand 同色。Compose 的颜色在 Kotlin 里，
+         这里是给 launcher 图标用的，两处需要手动保持一致。 -->
+    <color name="ic_launcher_background">#FF00639B</color>
+</resources>
