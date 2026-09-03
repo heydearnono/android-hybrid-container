@@ -16,7 +16,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "android-base"
+rootProject.name = "android-hybrid-container"
 
 include(":app")
 

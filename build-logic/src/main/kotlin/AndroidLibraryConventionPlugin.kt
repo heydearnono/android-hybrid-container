@@ -1,5 +1,5 @@
 import com.android.build.api.dsl.LibraryExtension
-import com.example.base.buildlogic.configureAndroidCommon
+import com.heydearnono.hybrid.buildlogic.configureAndroidCommon
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType

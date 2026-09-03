@@ -1,5 +1,5 @@
-import com.example.base.buildlogic.androidExtension
-import com.example.base.buildlogic.libs
+import com.heydearnono.hybrid.buildlogic.androidExtension
+import com.heydearnono.hybrid.buildlogic.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies

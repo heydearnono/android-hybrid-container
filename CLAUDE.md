@@ -2,7 +2,7 @@
 
 生产级 Android 应用基座。多模块 Gradle 工程，**全部由 AI 开发**。
 
-包名当前是占位的 `com.example.base`。改名 = 各模块 `namespace` + 目录结构，随时可做。
+包名是 `com.heydearnono.hybrid`，工程名 `android-hybrid-container`。
 
 ## 验证闭环（最重要的一节）
 

@@ -4,5 +4,5 @@ plugins {
 }
 
 android {
-    namespace = "com.example.base.core.designsystem"
+    namespace = "com.heydearnono.hybrid.core.designsystem"
 }

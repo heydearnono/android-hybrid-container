@@ -1,4 +1,4 @@
-import com.example.base.buildlogic.configureKotlinJvm
+import com.heydearnono.hybrid.buildlogic.configureKotlinJvm
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 

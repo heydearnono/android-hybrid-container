@@ -4,10 +4,10 @@ plugins {
 }
 
 android {
-    namespace = "com.example.base"
+    namespace = "com.heydearnono.hybrid"
 
     defaultConfig {
-        applicationId = "com.example.base"
+        applicationId = "com.heydearnono.hybrid"
         versionCode = 1
         versionName = "0.1.0"
     }

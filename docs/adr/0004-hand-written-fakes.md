@@ -36,5 +36,5 @@
 
 ## 参考
 
-- `build-logic/src/main/kotlin/com/example/base/buildlogic/Catalog.kt` 的 `commonTestDependencies`
+- `build-logic/src/main/kotlin/com/heydearnono/hybrid/buildlogic/Catalog.kt` 的 `commonTestDependencies`
 - `core/domain/src/test/kotlin/.../GetArticlesUseCaseTest.kt`

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.base.feature.articles"
+    namespace = "com.heydearnono.hybrid.feature.articles"
 }
 
 dependencies {

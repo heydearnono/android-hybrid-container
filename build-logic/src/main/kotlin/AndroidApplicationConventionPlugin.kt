@@ -1,7 +1,7 @@
 import com.android.build.api.dsl.ApplicationExtension
-import com.example.base.buildlogic.configureAndroidCommon
-import com.example.base.buildlogic.intVersionOf
-import com.example.base.buildlogic.libs
+import com.heydearnono.hybrid.buildlogic.configureAndroidCommon
+import com.heydearnono.hybrid.buildlogic.intVersionOf
+import com.heydearnono.hybrid.buildlogic.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType

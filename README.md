@@ -1,4 +1,4 @@
-# android-base
+# android-hybrid-container
 
 生产级 Android 应用基座。多模块 Gradle 工程，分层 + DI + 网络 + 导航 + 主题 + 测试 + 静态检查开箱可用，带一个端到端联网列表页样例证明链路通。
 
@@ -45,8 +45,6 @@ Kotlin 2.2.10（AGP 9.2.1 内置）· Gradle 9.4.1 · Compose + Material 3 · Re
 | [ADR-0004](docs/adr/0004-hand-written-fakes.md) | 用手写 fake，不引 mock 框架 |
 
 ## 当前限制
-
-包名是占位的 `com.example.base`。
 
 自动化验证只覆盖编译、JVM 单测、静态检查。**APK 能否安装运行、UI 长什么样、instrumented 测试，全部需要人工在 Android Studio 里确认**——本环境没有真机、没有 AVD，也没有 `cmdline-tools` 去下载 system-image。要打开这条路，在 SDK Manager 里装 `cmdline-tools`。
 
