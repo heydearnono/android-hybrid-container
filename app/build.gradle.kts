@@ -23,11 +23,16 @@ dependencies {
     // :app 是唯一知道「实现是谁」的地方——只有这里能依赖 :core:data / :core:network。
     implementation(project(":core:data"))
     implementation(project(":core:network"))
+    // bridge 的 port 里有两个只有 :app 能实现（要应用版本号、要导航图）。
+    implementation(project(":core:webview"))
     implementation(project(":feature:articles"))
+    implementation(project(":feature:web"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.koin.android)
+    // koinInject()：NavHost 要把 NavController 装到 AppNativeRouter 上。
+    implementation(libs.koin.compose)
 }

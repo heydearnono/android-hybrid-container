@@ -105,6 +105,12 @@ private fun ErrorContent(
 private fun AppError.displayMessage(): String =
     when (this) {
         AppError.Network -> stringResource(R.string.articles_error_network)
+
         AppError.Serialization -> stringResource(R.string.articles_error_serialization)
+
         is AppError.Http -> stringResource(R.string.articles_error_http, code)
+
+        // 这个页面产生不了 Rejected（它只是拉列表），但 when 必须穷举。
+        // 给一句通用文案，而不是把 bridge 的错误码泄露到用户界面上。
+        is AppError.Rejected -> stringResource(R.string.articles_error_unexpected)
     }

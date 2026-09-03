@@ -6,4 +6,5 @@
     <string name="articles_error_network">网络不可用，请检查连接后重试</string>
     <string name="articles_error_http">服务端返回错误（%1$d）</string>
     <string name="articles_error_serialization">响应格式与预期不一致</string>
+    <string name="articles_error_unexpected">出了点问题，请稍后重试</string>
 </resources>

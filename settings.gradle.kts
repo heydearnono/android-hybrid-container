@@ -25,7 +25,10 @@ include(":core:common")
 include(":core:domain")
 include(":core:network")
 include(":core:data")
+include(":core:bridge")
 
 // 依赖 Android 运行时的模块。
 include(":core:designsystem")
+include(":core:webview")
 include(":feature:articles")
+include(":feature:web")

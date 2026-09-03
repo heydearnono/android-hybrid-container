@@ -17,4 +17,16 @@ sealed interface AppError {
 
     /** 响应体和契约不一致。 */
     data object Serialization : AppError
+
+    /**
+     * 调用被拒绝，或参数不合法。
+     *
+     * [code] 是稳定的机器可读标识，会原样发给非 Kotlin 的调用方（比如 WebView 里的 JS）。
+     * 之所以是字符串而不是枚举：产生它的一方（`:core:bridge`）内部仍然用枚举，
+     * 只在跨出边界、接收方只认字符串时才退化成这里的 [code]。
+     */
+    data class Rejected(
+        val code: String,
+        val detail: String? = null,
+    ) : AppError
 }

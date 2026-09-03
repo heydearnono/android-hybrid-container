@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-生产级 Android 应用基座。多模块 Gradle 工程，**全部由 AI 开发**。
+生产级 Android 混合容器基座。多模块 Gradle 工程，**全部由 AI 开发**。
 
 包名是 `com.heydearnono.hybrid`，工程名 `android-hybrid-container`。
 
@@ -19,6 +19,8 @@
 
 **做不到的事**：装 APK、运行 App、看 UI、任何 instrumented 测试。这些只能人工在 Android Studio 里做，不要假装验证过。要打开这条路，需要用户在 SDK Manager 里装 `cmdline-tools`，之后才能用 `sdkmanager` 拉 system-image、起 AVD。
 
+**WebView 是这条边界上最危险的地方。** `android.webkit` / `androidx.webkit` 在单测里是 stub，而 `unitTests.isReturnDefaultValues = true` 会让它们静静返回默认值而不是报错——所以给容器写的测试**会绿，但那个绿是假的**，比没有测试更坏。`:core:webview` 因此刻意不带单测；要验证容器行为只能人工跑。对应地，容器里不许写业务分支（见「JSBridge 与容器」一节）。
+
 这条约束直接决定架构（见下一节）：业务逻辑尽量压进纯 JVM 模块，因为那是能自测的部分。
 
 ## 模块结构
@@ -32,18 +34,35 @@
 | `:core:domain` | `base.jvm.library` | 实体、use case、repository **接口** |
 | `:core:network` | `base.jvm.library` | Retrofit + OkHttp + kotlinx.serialization、DTO |
 | `:core:data` | `base.jvm.library` | repository 实现、DTO→domain 映射 |
+| `:core:bridge` | `base.jvm.library` | JSBridge：报文 DTO/codec、dispatcher、registry、origin 策略、全部 handler、port 接口、`FileKeyValueStore` |
 | `:core:designsystem` | `base.android.library` + `base.android.compose` | `BaseTheme`、通用组件 |
+| `:core:webview` | `base.android.library` + `base.android.compose` | WebView 容器、`WebViewAssetLoader`、bridge 注入、port 的 Android 实现。**不可自测的部分全在这里** |
 | `:feature:articles` | `base.android.library` + `base.android.compose` | 样例：联网列表页 |
+| `:feature:web` | `base.android.library` + `base.android.compose` | 全屏 web 页：三态 ViewModel + `PageHost` 实现 |
 
-四个 `core` 是纯 JVM 的——Retrofit / OkHttp / kotlinx.serialization 都是普通 JVM 库。**大部分逻辑因此可自测。**
+五个 `core` 是纯 JVM 的——Retrofit / OkHttp / kotlinx.serialization 都是普通 JVM 库。**大部分逻辑因此可自测。**
 
 分层规则：
 
-- 依赖方向单向向下：`:app` → `:feature` → `:core:data` → `:core:domain` → `:core:common`。`:core:domain` 零依赖（除 `:core:common`），且**不认识 DI 框架**——use case 在 `:core:data` 的 Koin module 里声明。
+- 依赖方向单向向下：`:app` → `:feature` → `:core:data` → `:core:domain` → `:core:common`；容器一侧是 `:app` → `:feature:web` → `:core:webview` → `:core:bridge` → `:core:common`。`:core:domain` 零依赖（除 `:core:common`），且**不认识 DI 框架**——use case 在 `:core:data` 的 Koin module 里声明。
 - `IOException` / `HttpException` / `SerializationException` 只允许出现在 `:core:network` 和 `:core:data` 内部。跨出 repository 前必须翻译成 `AppError`。
 - `:feature` 之间不互相依赖。要共享就下沉到 `:core`。
 - 只有 `:app` 知道「接口的实现是谁」。
 - 新增模块：`settings.gradle.kts` 注册 + 套一个 convention plugin，**不在模块里重复写 Android 配置**。
+- 公开类的**超类型**来自 `implementation` 依赖时，消费方会报 `Cannot access '...' which is a supertype of '...'`。所以 `:core:webview` 对 `:core:bridge`、`:feature:web` 对 `:core:webview` 用的是 `api`。
+
+## JSBridge 与容器
+
+通道是 `WebViewCompat.addWebMessageListener`（ADR-0005），能力拆成「纯 JVM handler + 极薄 port」（ADR-0006）。改这块之前先读这两篇。
+
+- **能力 = handler + port。** 参数校验、结果编码、错误映射全部写在 `:core:bridge` 的 handler 里（可测）；碰 Android API 的部分抽成 port 接口，实现放 `:core:webview` / `:feature:web` / `:app`。**port 实现只允许是几行直线代码，不许有分支、不许有状态机**——那部分代码没有测试兜着。
+- 同理，容器（`HybridWebView` / `HybridWebViewClient`）只把 WebView 回调原样转给 `HybridWebViewListener`，**状态迁移规则全部放在 `WebPageViewModel` 里**，因为它能在 JVM 上测。
+- **默认拒绝。** 新增一个能力要同时在 `BridgeDispatcherFactory.handlers()` 注册、在 `app/.../bridge/BridgeSecurity.kt` 的白名单加一行。少任何一处，`BridgeWiringTest` 会红。
+- **origin 授权是双闸门**，两处必须同源：`BridgeSecurityConfig.allowedOriginRules`（喂 `addWebMessageListener`）和 `BridgePolicy`（喂 dispatcher）。`allowAnyOrigin` 在任何构建类型下都不许打开。iframe（`isMainFrame == false`）不给 bridge。
+- **不静默降级。** `WEB_MESSAGE_LISTENER` 不支持时页面进 `BRIDGE_UNAVAILABLE` 错误态，绝不回退 `addJavascriptInterface`。
+- **`app/src/main/assets/demo/bridge.js` 与 Kotlin 侧的对应关系编译器管不到**：注入对象名（`BRIDGE_JS_OBJECT_NAME` = `__hybridNative`）和报文格式（`BridgeMessage.kt`）。改一边必须改另一边。`.js` / `.html` 不在 Spotless 范围内，也没有 JS lint。
+- assets 页面必须经 `WebViewAssetLoader` 以 `https://appassets.androidplatform.net/assets/...` 加载。`file://` 页面的 `sourceOrigin` 是字符串 `"null"`，写不进白名单，bridge 一条都不通。
+- 查 `androidx.webkit` 的 API 形状读 sources jar，别凭记忆：`~/.gradle/caches/modules-2/files-2.1/androidx.webkit/`。
 
 ## 构建配置：AGP 9 的坑（全部实测过，不要凭记忆改）
 
@@ -83,13 +102,13 @@
 - 测试方法名用中文反引号，描述行为不描述实现。ktlint 的 `function-naming` 已为此关掉。
 - 单测里 `android.jar` 的 stub 方法返回默认值（`unitTests.isReturnDefaultValues = true`），否则会抛 "not mocked"。
 
-当前 17 个测试，覆盖：use case 排序/过滤/错误透传、Retrofit 序列化与状态码、repository 的三种异常翻译、DI 图、ViewModel 四种状态迁移。
+当前 98 个测试，覆盖：use case 排序/过滤/错误透传、Retrofit 序列化与状态码、repository 的三种异常翻译、DI 图与 bridge 白名单接线、ViewModel 状态迁移、bridge 的报文编解码 / origin 匹配 / 分发与错误映射 / 8 个 handler 的参数校验 / 文件存储。
 
 ## 格式与静态检查
 
 - Spotless + ktlint 在**根项目**统一配置，覆盖所有模块和 `build-logic`。规则细节在 `.editorconfig`，IDE 和 ktlint 读同一份。
 - 有两条 ktlint 规则是刻意关掉的：`function-naming`（中文测试名）、`filename`（一个文件多个顶层声明是有意的，比如 `Outcome.kt` 里带扩展函数）。
-- Android Lint 覆盖全部 7 个模块——纯 JVM 模块额外 apply 了 `com.android.lint`，不加的话 `:app:lint` 会把它们当外部依赖跳过（日志里会明说 "Lint will treat :core:xxx as an external dependency"），等于大部分业务代码没被检查。
+- Android Lint 覆盖全部 10 个模块——纯 JVM 模块额外 apply 了 `com.android.lint`，不加的话 `:app:lint` 会把它们当外部依赖跳过（日志里会明说 "Lint will treat :core:xxx as an external dependency"），等于大部分业务代码没被检查。
 - 抑制 lint 优先按路径写进模块的 `lint.xml`（例子：`app/lint.xml` 只为 adaptive icon 关掉 `ObsoleteSdkInt`），不要在 convention plugin 里全局 disable。
 
 ## 环境事实

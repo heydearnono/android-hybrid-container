@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="web_title_fallback">加载中…</string>
+    <string name="web_error_load_failed">页面加载失败，请检查网络后重试</string>
+    <!-- 说清「不是页面的问题」，否则用户只会反复重试。 -->
+    <string name="web_error_bridge_unavailable">系统 WebView 版本过低，无法使用此页面。请更新「Android System WebView」后重试</string>
+</resources>
