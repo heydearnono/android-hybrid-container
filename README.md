@@ -2,7 +2,7 @@
 
 生产级 Android 混合容器基座。多模块 Gradle 工程，分层 + DI + 网络 + 导航 + 主题 + 测试 + 静态检查开箱可用，带一个 **WebView 容器 + JSBridge** 和一个端到端联网列表页样例证明链路通。
 
-协作约定见 [CLAUDE.md](CLAUDE.md)，架构决策见 [docs/adr/](docs/adr/)。
+协作约定见 [CLAUDE.md](CLAUDE.md)，架构决策见 [docs/adr/](docs/adr/)，**上手前先扫一遍 [踩坑手册](docs/PITFALLS.md)**。
 
 ## 快速开始
 
@@ -13,6 +13,8 @@
 ```
 
 `java` 不在 PATH，`check.sh` 会自动用 Android Studio 自带的 JBR。产物在 `app/build/outputs/apk/debug/`。
+
+卡住了先查 [踩坑手册](docs/PITFALLS.md)——Studio sync 报 AGP 版本不兼容、`./gradlew` 找不到 java、单测「假绿」这些都在里面。
 
 ## 模块
 
