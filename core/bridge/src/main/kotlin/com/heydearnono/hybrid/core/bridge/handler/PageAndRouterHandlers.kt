@@ -42,8 +42,10 @@ class RouterHandler(
 
     override suspend fun handle(params: JsonObject?): Outcome<JsonElement> {
         val route = params.requiredText("route") ?: return invalidParams("router.open 需要非空的 route")
-        // 首批只支持「白名单里的路由名」，不做 URL / scheme 匹配。现在定一套路由协议，
-        // 将来做 native/web 统一路由时大概率要推翻，那时已经有页面在用了。
+        // 只认白名单里的路由名，不做 URL / scheme 匹配，这是正式设计（三端契约 §6.6）：
+        // URL 匹配会把「哪些原生页可达」从一张明表变成一组规则，那本质是权限问题——
+        // 与 bridge 整体「默认拒绝 + 显式登记」的判断一致。白名单内容各端自定，
+        // 唯一例外是 `probe`：三端都必须有，供一致性验收页测 router.open 成功的样子。
         return if (router.open(route)) {
             Outcome.Success(NoData)
         } else {

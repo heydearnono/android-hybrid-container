@@ -24,13 +24,14 @@ private fun params(raw: String): JsonObject = Json.parseToJsonElement(raw) as Js
  */
 class HandlerTest {
     @Test
-    fun `device_info 输出固定的字段集合`() =
+    fun `device_info 输出固定的字段集合，平台专有字段收进 extra`() =
         runTest {
             val result = DeviceInfoHandler(FakeDeviceInfoProvider()).handle(null)
 
             assertEquals(
-                """{"platform":"android","osVersion":"16","sdkInt":37,"manufacturer":"Google",""" +
-                    """"model":"Pixel 9","appVersionName":"1.0.0","appVersionCode":1,"locale":"zh-CN"}""",
+                """{"platform":"android","osVersion":"16","model":"Pixel 9",""" +
+                    """"appVersionName":"1.0.0","appVersionCode":1,"locale":"zh-CN",""" +
+                    """"extra":{"sdkInt":37,"manufacturer":"Google"}}""",
                 result.json(),
             )
         }

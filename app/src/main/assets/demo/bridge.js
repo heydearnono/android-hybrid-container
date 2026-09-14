@@ -9,10 +9,10 @@
  *   2. 报文格式必须和 :core:bridge 的 BridgeMessage.kt 一致。
  * 改了任何一边都要手动改另一边。
  *
- * 报文：
- *   JS → Native   {"id":"7","method":"storage.set","params":{...}}   省略 id = 单向通知，不回包
- *   Native → JS   {"id":"7","ok":true,"data":{...}}
- *                 {"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key"}}
+ * 报文（三端契约 v1）：
+ *   JS → Native   {"v":1,"id":"7","method":"storage.set","params":{...}}   id 必填
+ *   Native → JS   {"v":1,"id":"7","ok":true,"data":{...}}
+ *                 {"v":1,"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key"}}
  *                 {"event":"page.resume","data":{...}}
  */
 (function (global) {
@@ -20,6 +20,7 @@
 
   var NATIVE_OBJECT_NAME = '__hybridNative';
   var DEFAULT_TIMEOUT_MS = 10000;
+  var PROTOCOL_VERSION = 1;
 
   var native = global[NATIVE_OBJECT_NAME];
   var pending = {};
@@ -112,21 +113,8 @@
           reject(bridgeError('TIMEOUT', method + ' 超过 ' + timeoutMs + 'ms 没有回包'));
         }, timeoutMs),
       };
-      native.postMessage(JSON.stringify({ id: id, method: method, params: params || {} }));
+      native.postMessage(JSON.stringify({ v: PROTOCOL_VERSION, id: id, method: method, params: params || {} }));
     });
-  }
-
-  /**
-   * 单向通知：不带 id，native 不回包，连错误也不回。所以调用方无法知道它成功没有。
-   *
-   * @return false 表示 bridge 根本没注入
-   */
-  function notify(method, params) {
-    if (!native) {
-      return false;
-    }
-    native.postMessage(JSON.stringify({ method: method, params: params || {} }));
-    return true;
   }
 
   function on(event, callback) {
@@ -148,22 +136,43 @@
     }
   }
 
+  /**
+   * 握手：等 bridge.capabilities 真的回包之后才把 ready 置 true。
+   *
+   * 三端契约 §6.2 把 id 改成必填之后，「不带 id 的单向通知」这条路没有了——
+   * 想知道握手有没有成功，就必须真的 await 一次 call()，而不是像原来那样
+   * fire-and-forget 靠「有没有副作用」去猜。
+   *
+   * addWebMessageListener 的机制是：native 只有在 JS 先 postMessage 过之后，
+   * 才拿到那个 frame 的 replyProxy——不先开口，native 就发不出任何事件。
+   * 这次 call() 顺带满足了这个「先开口」的前提。
+   */
+  var ready = native
+    ? call('bridge.capabilities').then(
+        function (data) {
+          global.HybridBridge.methods = (data && data.methods) || [];
+          return data;
+        },
+        function (err) {
+          // 握手失败不该让整个 SDK 抛出去——调用方后续调具体能力时自然会拿到
+          // 同样的错误码，这里只负责把"能力清单还没拿到"这件事记下来。
+          global.console.error('[bridge] 握手失败', err);
+          throw err;
+        },
+      )
+    : Promise.reject(bridgeError('BRIDGE_UNAVAILABLE', '当前环境没有注入 ' + NATIVE_OBJECT_NAME));
+
   if (native) {
     native.onmessage = onMessage;
-
-    // 握手。addWebMessageListener 的机制是：native 只有在 JS 先 postMessage 过之后，
-    // 才拿到那个 frame 的 replyProxy。不先开口，native 就发不出任何事件。
-    //
-    // 'bridge.handshake' 刻意不在能力白名单里，native 会判它 PERMISSION_DENIED——
-    // 但因为没带 id，那个失败不会回包，什么都不会发生。要的只是「开口」这个副作用。
-    notify('bridge.handshake');
   }
 
   global.HybridBridge = {
     available: !!native,
+    methods: [],
+    ready: ready,
     call: call,
-    notify: notify,
     on: on,
     off: off,
   };
 })(window);
+

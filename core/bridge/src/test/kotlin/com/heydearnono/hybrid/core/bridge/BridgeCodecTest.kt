@@ -21,32 +21,43 @@ class BridgeCodecTest {
         ((codec.decodeRequest(raw) as Outcome.Failure).error as AppError.Rejected).code
 
     @Test
-    fun `合法请求解出 id method params`() {
-        val request = decode("""{"id":"7","method":"storage.set","params":{"key":"k"}}""")
+    fun `合法请求解出 v id method params`() {
+        val request = decode("""{"v":1,"id":"7","method":"storage.set","params":{"key":"k"}}""")
 
+        assertEquals(1, request.v)
         assertEquals("7", request.id)
         assertEquals("storage.set", request.method)
         assertEquals(JsonPrimitive("k"), request.params?.get("key"))
     }
 
     @Test
-    fun `id 省略时为 null 表示单向通知`() {
-        assertNull(decode("""{"method":"ui.toast"}""").id)
+    fun `JS 侧多传字段不影响解码`() {
+        assertEquals("ui.toast", decode("""{"v":1,"id":"1","method":"ui.toast","sdkVersion":"9.9"}""").method)
     }
 
     @Test
-    fun `JS 侧多传字段不影响解码`() {
-        assertEquals("ui.toast", decode("""{"method":"ui.toast","sdkVersion":"9.9"}""").method)
+    fun `缺 v 判为 BAD_REQUEST`() {
+        assertEquals("BAD_REQUEST", decodeErrorCode("""{"id":"7","method":"ui.toast"}"""))
+    }
+
+    @Test
+    fun `缺 id 判为 BAD_REQUEST`() {
+        assertEquals("BAD_REQUEST", decodeErrorCode("""{"v":1,"method":"ui.toast"}"""))
     }
 
     @Test
     fun `缺 method 判为 BAD_REQUEST`() {
-        assertEquals("BAD_REQUEST", decodeErrorCode("""{"id":"7"}"""))
+        assertEquals("BAD_REQUEST", decodeErrorCode("""{"v":1,"id":"7"}"""))
     }
 
     @Test
     fun `非法 JSON 判为 BAD_REQUEST`() {
         assertEquals("BAD_REQUEST", decodeErrorCode("not json at all"))
+    }
+
+    @Test
+    fun `v 不是本端支持的版本判为 UNSUPPORTED_VERSION`() {
+        assertEquals("UNSUPPORTED_VERSION", decodeErrorCode("""{"v":99,"id":"7","method":"ui.toast"}"""))
     }
 
     @Test
@@ -63,13 +74,13 @@ class BridgeCodecTest {
     }
 
     @Test
-    fun `成功回包不带 error 键`() {
+    fun `成功回包带 v 且不带 error 键`() {
         val payload =
             codec.encodeResponse(
                 BridgeResponse(id = "7", ok = true, data = buildJsonObject { put("v", JsonPrimitive(1)) }),
             )
 
-        assertEquals("""{"id":"7","ok":true,"data":{"v":1}}""", payload)
+        assertEquals("""{"v":1,"id":"7","ok":true,"data":{"v":1}}""", payload)
     }
 
     @Test
@@ -83,7 +94,43 @@ class BridgeCodecTest {
                 ),
             )
 
-        assertEquals("""{"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key"}}""", payload)
+        assertEquals("""{"v":1,"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key"}}""", payload)
+    }
+
+    @Test
+    fun `失败回包的 details 缺省时不出现在报文里`() {
+        val payload =
+            codec.encodeResponse(
+                BridgeResponse(
+                    id = "7",
+                    ok = false,
+                    error = BridgeErrorPayload(code = "INVALID_PARAMS", message = "缺少 key"),
+                ),
+            )
+
+        assertEquals("""{"v":1,"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key"}}""", payload)
+    }
+
+    @Test
+    fun `失败回包带 details 时原样输出`() {
+        val payload =
+            codec.encodeResponse(
+                BridgeResponse(
+                    id = "7",
+                    ok = false,
+                    error =
+                        BridgeErrorPayload(
+                            code = "INVALID_PARAMS",
+                            message = "缺少 key",
+                            details = buildJsonObject { put("field", JsonPrimitive("key")) },
+                        ),
+                ),
+            )
+
+        assertEquals(
+            """{"v":1,"id":"7","ok":false,"error":{"code":"INVALID_PARAMS","message":"缺少 key","details":{"field":"key"}}}""",
+            payload,
+        )
     }
 
     @Test

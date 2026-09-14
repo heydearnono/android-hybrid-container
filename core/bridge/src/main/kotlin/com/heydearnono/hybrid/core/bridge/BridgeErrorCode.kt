@@ -14,8 +14,11 @@ import com.heydearnono.hybrid.core.common.AppError
 enum class BridgeErrorCode(
     val wireCode: String,
 ) {
-    /** 报文根本没解开：不是合法 JSON，或缺 `method`。 */
+    /** 报文根本没解开：不是合法 JSON，缺 `v` / `id` / `method`，或 `id` 在途重复。 */
     BAD_REQUEST("BAD_REQUEST"),
+
+    /** `v` 不是本端支持的契约版本。三端 + H5 四方独立发版之后才需要这个码——单端不需要。 */
+    UNSUPPORTED_VERSION("UNSUPPORTED_VERSION"),
 
     /** 这个 origin 没有该能力的授权。注意它永远优先于 [METHOD_NOT_FOUND]，见 [BridgeDispatcher]。 */
     PERMISSION_DENIED("PERMISSION_DENIED"),

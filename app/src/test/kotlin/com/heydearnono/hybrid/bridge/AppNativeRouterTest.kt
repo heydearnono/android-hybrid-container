@@ -53,6 +53,12 @@ class AppNativeRouterTest {
         }
 
     @Test
+    fun `probe 在白名单里，这是 PROTOCOL 3 唯一规定的路由名`() =
+        runTest {
+            assertTrue(NATIVE_ROUTE_TARGETS.containsKey("probe"))
+        }
+
+    @Test
     fun `没有导航宿主时返回 false，而不是排队等待`() =
         runTest {
             val router = AppNativeRouter(NATIVE_ROUTE_TARGETS, dispatchers)

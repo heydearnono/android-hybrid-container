@@ -14,4 +14,9 @@ fun defaultBridgeJson(): Json =
         ignoreUnknownKeys = true
         // 回包里 data / error 为 null 时直接省掉这个键，JS 侧用 `in` 判断更自然。
         explicitNulls = false
+        // BridgeResponse.v 带默认值（当前协议版本），默认情况下 kotlinx.serialization
+        // 会把「等于默认值」的字段整个省掉——那会让回包在协议升级前缺 v，JS 侧没法
+        // 靠它分辨「native 没升级」还是「这次刚好是版本 1」。v 必须每次都出现在报文里。
+        encodeDefaults = true
     }
+

@@ -1,6 +1,7 @@
 package com.heydearnono.hybrid.bridge
 
 import com.heydearnono.hybrid.core.bridge.BridgePolicy
+import com.heydearnono.hybrid.core.bridge.CAPABILITIES_METHOD
 import com.heydearnono.hybrid.core.bridge.di.BridgeDispatcherFactory
 import com.heydearnono.hybrid.core.bridge.port.DeviceInfo
 import com.heydearnono.hybrid.core.bridge.port.DeviceInfoProvider
@@ -70,6 +71,10 @@ class BridgeWiringTest {
     fun `白名单里的方法名都真的注册了，且没有注册了却没授权的能力`() {
         // 用 assertEquals 而不是 containsAll：两个方向都要锁。多出来的说明白名单漏加了
         // 一行——那个能力任何页面都调不到，同样是个 bug，只是表现成「功能没生效」。
+        //
+        // bridge.capabilities 不在 registry 里（它是 BridgeDispatcher 里的特殊方法，
+        // 见 BridgeDispatcher.execute 的说明），所以从「注册表」这边排除，只在下面
+        // 单独锁它自己在白名单里的那一条。
         assertEquals(registryMethods(), DEMO_PAGE_METHODS)
     }
 
@@ -91,6 +96,15 @@ class BridgeWiringTest {
     }
 
     @Test
+    fun `demo 页的 origin 已被授权调用握手能力`() {
+        // bridge.capabilities 不在 DEMO_PAGE_METHODS/registry 里，容易在加白名单时漏掉，
+        // 漏掉的后果是握手请求本身先被 PERMISSION_DENIED 挡掉，JS 侧连"能力清单"都拿不到。
+        val policy = BridgePolicy(appBridgeSecurityConfig())
+
+        assertTrue(policy.isAllowed(APP_ASSETS_ORIGIN, CAPABILITIES_METHOD))
+    }
+
+    @Test
     fun `别的 origin 一个能力都调不到`() {
         val policy = BridgePolicy(appBridgeSecurityConfig())
 
@@ -104,3 +118,4 @@ class BridgeWiringTest {
         assertFalse(appBridgeSecurityConfig().allowAnyOrigin)
     }
 }
+

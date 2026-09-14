@@ -27,18 +27,25 @@ class DeviceInfoHandler(
     override suspend fun handle(params: JsonObject?): Outcome<JsonElement> {
         val info = provider.snapshot()
         // 报文字段在这里显式列一遍，不直接序列化 DeviceInfo：port 的字段名是内部事情，
-        // 改它不该无声无息地改掉 JS 侧的契约。
+        // 改它不该无声无息地改掉 JS 侧的契约。必须级字段在顶层，平台专有字段
+        // （sdkInt、manufacturer）收进 extra——顶层混放会让 H5 写 info.sdkInt 在别的
+        // 端上悄悄拿到 undefined，收进 extra 后 info.extra?.sdkInt 自带「可能没有」的语气。
         return Outcome.Success(
             buildJsonObject {
                 // 固定写死，让 JS 侧将来能用同一份代码分辨 native 是哪一端。
                 put("platform", "android")
                 put("osVersion", info.osVersion)
-                put("sdkInt", info.sdkInt)
-                put("manufacturer", info.manufacturer)
                 put("model", info.model)
                 put("appVersionName", info.appVersionName)
                 put("appVersionCode", info.appVersionCode)
                 put("locale", info.locale)
+                put(
+                    "extra",
+                    buildJsonObject {
+                        put("sdkInt", info.sdkInt)
+                        put("manufacturer", info.manufacturer)
+                    },
+                )
             },
         )
     }
@@ -55,3 +62,5 @@ class ToastHandler(
         return Outcome.Success(NoData)
     }
 }
+
+

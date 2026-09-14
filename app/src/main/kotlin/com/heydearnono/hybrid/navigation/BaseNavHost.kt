@@ -17,6 +17,9 @@ import org.koin.compose.koinInject
 
 internal const val ARTICLES_ROUTE = "articles"
 
+/** 三端契约规定的探活路由（PROTOCOL §3）：一致性验收页要能在三端各成功跳一次。 */
+internal const val PROBE_ROUTE = "probe"
+
 internal const val WEB_ROUTE = "web?url={url}"
 private const val WEB_ARG_URL = "url"
 
@@ -28,8 +31,15 @@ internal fun webRoute(url: String): String = "web?url=${Uri.encode(url)}"
  *
  * 表里的 key 是给 JS 的稳定名字，value 是导航图内部的路由——两者刻意分开，
  * 这样改导航图不会变成一次 JS 侧的破坏性变更。
+ *
+ * `probe` 是唯一一个名字被 PROTOCOL §3 直接规定的条目：一致性验收页要用同一份 JS
+ * 在三端各跑一次 `router.open`，若白名单完全自定，验收页就测不出这个能力成功的样子。
  */
-internal val NATIVE_ROUTE_TARGETS: Map<String, String> = mapOf("articles" to ARTICLES_ROUTE)
+internal val NATIVE_ROUTE_TARGETS: Map<String, String> =
+    mapOf(
+        "articles" to ARTICLES_ROUTE,
+        PROBE_ROUTE to PROBE_ROUTE,
+    )
 
 /** 装在 assets 里的 demo 页，也是起始页。 */
 internal val DEMO_PAGE_URL: String = appAssetsUrl("demo/index.html")
@@ -59,6 +69,10 @@ fun BaseNavHost() {
     ) {
         composable(ARTICLES_ROUTE) {
             ArticlesRoute()
+        }
+
+        composable(PROBE_ROUTE) {
+            ProbeScreen()
         }
 
         composable(

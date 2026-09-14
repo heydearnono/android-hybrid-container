@@ -53,7 +53,7 @@
 <button data-method="storage.remove" data-params='{"key":"demo.stamp"}'>storage.remove</button>
 
 <h2>访问控制自检</h2>
-<button data-method="bridge.handshake" data-params='{}'>调白名单外的能力 → 应 PERMISSION_DENIED</button>
+<button data-method="storage.clear" data-params='{}'>调白名单外的能力 → 应 PERMISSION_DENIED</button>
 
 <pre id="log"></pre>
 
@@ -105,7 +105,16 @@
   HybridBridge.on('page.pause', function () { log('★ event page.pause'); });
 
   if (HybridBridge.available) {
-    statusEl.textContent = 'bridge 已注入，逐个按钮验证。';
+    statusEl.textContent = '等待握手…';
+    HybridBridge.ready.then(
+      function () {
+        statusEl.textContent = 'bridge 已握手，共 ' + HybridBridge.methods.length + ' 个可用能力，逐个按钮验证。';
+      },
+      function (err) {
+        statusEl.textContent = '握手失败：[' + err.code + '] ' + err.message;
+        statusEl.className = 'bad';
+      }
+    );
   } else {
     statusEl.textContent = 'bridge 未注入：这个页面不在浏览器里跑，只能在容器里打开。';
     statusEl.className = 'bad';

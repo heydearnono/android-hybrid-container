@@ -11,10 +11,15 @@ internal class BridgeCodec(
 ) {
     fun decodeRequest(raw: String): Outcome<BridgeRequest> =
         try {
-            Outcome.Success(json.decodeFromString<BridgeRequest>(raw))
+            val request = json.decodeFromString<BridgeRequest>(raw)
+            if (request.v != BRIDGE_PROTOCOL_VERSION) {
+                Outcome.Failure(BridgeErrorCode.UNSUPPORTED_VERSION.asAppError("v=${request.v}"))
+            } else {
+                Outcome.Success(request)
+            }
         } catch (e: IllegalArgumentException) {
             // SerializationException 是 IllegalArgumentException 的子类，
-            // 非法 JSON 和「结构合法但缺 method」都落在这一条里。
+            // 非法 JSON 和「结构合法但缺 v / id / method」都落在这一条里。
             Outcome.Failure(BridgeErrorCode.BAD_REQUEST.asAppError(e.message))
         }
 
