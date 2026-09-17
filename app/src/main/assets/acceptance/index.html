@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  三端一致性验收页。README 完成标准第 2、3 条的载体。
+
+  它必须**经离线包链路**被打开(入口分发 → manifest → route → entry → resource),
+  不是从 assets 直读——第 2 条判的就是这个,而 §8.3 那几条不变量也只有走真链路才成立。
+
+  三条硬规矩:
+    1. 零外链、零构建。一个 H5 页要能在三端的容器里直接打开,不许依赖任何网络资源
+       (依赖了就等于在验收里偷偷走了一次真实请求,正好撞 §8.3 不变量 2)
+    2. 只用相对路径。这个仓库在 GitHub 上,不许出现 scheme 名、runtime host、示例包名
+    3. 五个文件必须都在 manifest 里声明:index.html / bridge.js / harness.js / cases.js / main.js
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>三端一致性验收</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; padding: 12px 12px 32px;
+    font: 14px/1.5 -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Noto Sans CJK SC", sans-serif;
+  }
+  h1 { font-size: 17px; margin: 0 0 8px; }
+  #summary { padding: 10px 12px; border-radius: 8px; font-weight: 600; }
+  #summary.running { background: #eef2ff; color: #3730a3; }
+  #summary.ok      { background: #ecfdf5; color: #065f46; }
+  #summary.bad     { background: #fef2f2; color: #991b1b; }
+  #env { margin: 8px 0 12px; font-size: 12px; opacity: .75; word-break: break-all; }
+  #env b { font-weight: 600; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+       padding: 7px 2px; border-bottom: 1px solid rgba(128,128,128,.25); }
+  .mark { width: 1em; text-align: center; font-weight: 700; }
+  li.pass .mark { color: #059669; }
+  li.fail .mark { color: #dc2626; }
+  li.pending .mark { color: #9ca3af; }
+  .ref { font: 12px/1.4 ui-monospace, Menlo, monospace; opacity: .6; min-width: 3.4em; }
+  .title { flex: 1 1 12em; }
+  li.manual .title::after { content: " (人眼确认)"; font-size: 12px; opacity: .6; }
+  .detail { flex: 1 1 100%; padding-left: 1.6em;
+            font: 12px/1.45 ui-monospace, Menlo, monospace; color: #dc2626; }
+  #manual { margin-top: 18px; padding-top: 12px; border-top: 2px solid rgba(128,128,128,.35); }
+  #manual p { margin: 0 0 8px; font-size: 12px; opacity: .8; }
+  button { font-size: 14px; padding: 9px 14px; margin: 0 8px 8px 0; border-radius: 8px;
+           border: 1px solid rgba(128,128,128,.5); background: transparent; color: inherit; }
+</style>
+</head>
+<body>
+<h1>三端一致性验收</h1>
+<div id="summary" class="running">正在跑…</div>
+<div id="env"></div>
+<div id="results"></div>
+
+<div id="manual">
+  <p><b>page.close</b> 是九个必须级能力里唯一不进自动用例的一个——它会关掉页面,
+     跑了就没有结果可看。人点一下:页面消失即通过;报错或毫无反应即失败。</p>
+  <button id="btn-close">调 page.close(会关掉本页)</button>
+  <button id="btn-reload">重跑(重新加载页面)</button>
+  <div id="manual-detail" class="detail"></div>
+</div>
+
+<!--
+  加载顺序是有意义的,不许换:
+    bridge.js  建立通道并发出握手(那次 bridge.capabilities 调用)
+    harness.js 提供 Harness
+    cases.js   注册用例,要求上面两个都已就绪
+    main.js    渲染并开跑
+  四个都用 defer:保证按书写顺序执行,且都在 DOM 解析完之后。
+
+  页面逻辑放在 main.js 而不是内联,是为了不依赖 `script-src 'unsafe-inline'`——
+  容器给离线页加一条 CSP 是很常见的做法,内联脚本会被静默拦掉,表现为白页。
+-->
+<script src="./bridge.js" defer></script>
+<script src="./harness.js" defer></script>
+<script src="./cases.js" defer></script>
+<script src="./main.js" defer></script>
+</body>
+</html>

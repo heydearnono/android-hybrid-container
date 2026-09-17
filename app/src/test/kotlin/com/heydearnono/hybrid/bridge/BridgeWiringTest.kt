@@ -10,6 +10,7 @@ import com.heydearnono.hybrid.core.bridge.port.NativeRouter
 import com.heydearnono.hybrid.core.bridge.port.PageHost
 import com.heydearnono.hybrid.core.bridge.port.Toaster
 import com.heydearnono.hybrid.core.webview.APP_ASSETS_ORIGIN
+import com.heydearnono.hybrid.navigation.ACCEPTANCE_PAGE_URL
 import com.heydearnono.hybrid.navigation.DEMO_PAGE_URL
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -82,6 +83,11 @@ class BridgeWiringTest {
     fun `demo 页的 URL 落在被授权的 origin 上`() {
         // 起始页要是加载自另一个 origin，bridge 会一条不通，而错误信息只有 PERMISSION_DENIED。
         assertTrue(DEMO_PAGE_URL.startsWith("$APP_ASSETS_ORIGIN/"), "demo 页 URL: $DEMO_PAGE_URL")
+    }
+
+    @Test
+    fun `验收页的 URL 落在被授权的 origin 上`() {
+        assertTrue(ACCEPTANCE_PAGE_URL.startsWith("$APP_ASSETS_ORIGIN/"), "验收页 URL: $ACCEPTANCE_PAGE_URL")
     }
 
     @Test

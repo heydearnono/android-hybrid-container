@@ -41,8 +41,18 @@ internal val NATIVE_ROUTE_TARGETS: Map<String, String> =
         PROBE_ROUTE to PROBE_ROUTE,
     )
 
-/** 装在 assets 里的 demo 页，也是起始页。 */
+/** 装在 assets 里的 demo 页，人工把玩用，不再是起始页。 */
 internal val DEMO_PAGE_URL: String = appAssetsUrl("demo/index.html")
+
+/**
+ * 三端一致性验收页（PROTOCOL §7），现在的起始页。
+ *
+ * 五个文件原样来自 Prospect 的 `acceptance/`——**不可在这里改一份**，改了就是三端各留一份，
+ * 验收页本身失去意义。当前是从 assets 直读（`WebViewAssetLoader` 的静态映射），
+ * 不经过任何离线包/manifest/resolver 链路：本仓库目前没有那套基础设施，
+ * 这是已知的、待核实的差距（见 README「等你定的」）。
+ */
+internal val ACCEPTANCE_PAGE_URL: String = appAssetsUrl("acceptance/index.html")
 
 /**
  * 全 App 的导航图。feature 模块只暴露自己的入口 Composable，路由常量集中在这里，
@@ -63,9 +73,10 @@ fun BaseNavHost() {
 
     NavHost(
         navController = navController,
-        // 起始页是 web demo 页：它同时演示 bridge 双向通信和 web → native 跳转，
-        // 几乎不用写新的原生 UI。原来的原生列表页样例完整保留在 ARTICLES_ROUTE。
-        startDestination = webRoute(DEMO_PAGE_URL),
+        // 起始页是三端一致性验收页：它本身就是 README 完成标准第 2、3 条的载体，
+        // 打开 App 就能看到跑没跑通。原来的 demo 页仍在 assets 里，留作人工把玩，
+        // 原生列表页样例完整保留在 ARTICLES_ROUTE。
+        startDestination = webRoute(ACCEPTANCE_PAGE_URL),
     ) {
         composable(ARTICLES_ROUTE) {
             ArticlesRoute()
@@ -80,7 +91,7 @@ fun BaseNavHost() {
             arguments = listOf(navArgument(WEB_ARG_URL) { type = NavType.StringType }),
         ) { entry ->
             WebPageRoute(
-                url = entry.arguments?.getString(WEB_ARG_URL) ?: DEMO_PAGE_URL,
+                url = entry.arguments?.getString(WEB_ARG_URL) ?: ACCEPTANCE_PAGE_URL,
                 // 栈里没有上一页时（比如起始页自己调 page.close），退出 Activity。
                 // 「关闭当前页」在栈底就是「离开 App」，让它什么都不做才是意外行为。
                 onClose = { if (!navController.popBackStack()) activity?.finish() },
