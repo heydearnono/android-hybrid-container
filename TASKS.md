@@ -50,4 +50,32 @@ API、动哪个文件、哪条单测、现在是什么状态。
 `scripts/probe.sh` 已就位并输出全部十六行，但 M2 只实现了前六条对应的页面侧判定，其余九条在 M3/M4
 补上之前一律打 FAIL（`nav-system-scheme` 恒为 MANUAL）。**这不是「跑失败了」，是「还没实现」。**
 
+## M3 · 配置、注入与 UA
+
+M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六项配置的「写没写进去」这里一条单测都
+给不出**：JVM 单测里 `WebSettings` 是 `android.jar` 的 stub，断言它的取值只会得到与代码无关的绿。所以
+取值（`WebSettingsSpec`，有单测）与写入（`CrabWebSettings.applyCrabSpec`，只能观察）刻意分成两处。
+
+| 判据 | 本端落点 | 状态 |
+| --- | --- | --- |
+| 六项配置按取值表落地 | `WebSettingsSpec`（取值，`WebSettingsSpecTest`）→ `applyCrabSpec`（写入） | 取值已落地 / 写入待模拟器核实 |
+| 混合内容 `NEVER_ALLOW` | `MixedContentPolicy` → `WebSettings.MIXED_CONTENT_NEVER_ALLOW`（常量值 0/2/1 由 javap 核过） | 取值已落地 / 写入待模拟器核实 |
+| 文件与内容访问四项全关 | 同上四个字段 | 取值已落地 / 写入待模拟器核实 |
+| 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实 |
+| 多窗口 / 脚本开窗 / 定位**显式开** | 三项 true，为的是 M4 的回调能被调用后当场拒绝并留日志 | 取值已落地 |
+| UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 / 生效值待模拟器核实 |
+| 页面开口之前注入，`inject-order` 成立 | `DocumentStartScript.source` + `WebViewCompat.addDocumentStartJavaScript`；入口页首行 `<script>` 记快照 | 待模拟器核实 |
+| 不支持时走兜底，且**两条路不叠加** | `CrabContainer.documentStartScriptSupported` 一个布尔决定；兜底是 `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML | 待模拟器核实 |
+| 注入范围不漏到别的 origin（`inject-scope`） | `HostingOrigin.allowedOriginRules`；页面用 `data:` iframe 经 `postMessage` 自报 | 待模拟器核实 |
+| 脚本重复注入看得出来 | 脚本用 `window.__CRAB__ ||` 初始化、`injected` 只增不减；`DocumentStartScriptTest` 盯着源码里这两条 | 已落地 |
+| 兜底只改 HTML、不碰素材 | `DocumentStartScript.appliesTo`（`DocumentStartScriptTest`） | 已落地 |
+| 加载后生效差异表（七行） | 探针页 `CRAB-ENV` 一行打 UA 与 `typeof localStorage` | 待模拟器核实 |
+
+**M3 留给模拟器的三个未知**，结果会反过来影响判据：
+
+1. `DOCUMENT_START_SCRIPT` 在目标镜像的内核上支不支持——决定走注入还是兜底，两条路的表现应当一致
+2. `data:` URL 的 iframe 加不加载得起来。加载不起来时 `inject-scope` 会因超时打 FAIL，细节里写着
+   「可能需要换 sandbox+srcdoc 退路」。**换退路要三端一起换，得回 pro 议，端内不自决**
+3. 文字大小跟不跟随系统字号（`textZoom = 100` 是否真的挡住了系统字号）
+
 <!--TASKS-BODY-->

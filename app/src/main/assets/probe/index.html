@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Crab 探针</title>
     <!--CRAB-INJECT-->
+    <script>
+      // 记住页面开口时注入的快照：inject-order 靠它判「页面自己的脚本跑之前 __CRAB__ 已经在了」。
+      // 这段必须在标记之后、在 probe.js 之前，否则判的是自己而不是注入。
+      window.__CRAB_SNAPSHOT__ = typeof window.__CRAB__ !== 'undefined'
+        ? { origin: window.__CRAB__.origin, injected: window.__CRAB__.injected }
+        : null;
+    </script>
     <style>
       :root {
         color-scheme: light dark;

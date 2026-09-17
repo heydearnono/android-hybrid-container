@@ -24,10 +24,15 @@ object HostingOrigin {
     /** 承载目录：既是 assets 下的目录名，也是 URL 的第一段路径。 */
     const val HOSTING_DIR: String = "probe"
 
-    const val ENTRY_URL: String = "$ORIGIN/$HOSTING_DIR/index.html"
+    /** 入口页在 `assets/` 下的相对路径；拦截点走兜底注入时要认出它。 */
+    const val ENTRY_ASSET_PATH: String = "$HOSTING_DIR/index.html"
 
     /** 承载目录里的第二个 HTML，M4 的 `nav-same-origin` / `nav-back` 用它。 */
-    const val SECOND_PAGE_URL: String = "$ORIGIN/$HOSTING_DIR/second.html"
+    const val SECOND_ASSET_PATH: String = "$HOSTING_DIR/second.html"
+
+    const val ENTRY_URL: String = "$ORIGIN/$ENTRY_ASSET_PATH"
+
+    const val SECOND_PAGE_URL: String = "$ORIGIN/$SECOND_ASSET_PATH"
 
     /** `addDocumentStartJavaScript` 要的 origin 规则；注入范围从这里派生。 */
     val allowedOriginRules: Set<String> = setOf(ORIGIN)

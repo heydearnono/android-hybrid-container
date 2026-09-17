@@ -5,6 +5,7 @@ import android.webkit.WebResourceResponse
 import androidx.webkit.WebViewAssetLoader
 import net.xiaoluzhu.crab.container.AssetRoute
 import net.xiaoluzhu.crab.container.AssetRouting
+import net.xiaoluzhu.crab.container.DocumentStartScript
 import net.xiaoluzhu.crab.container.ProbeContract
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -21,9 +22,14 @@ import java.io.IOException
  *
  * 这个类刻意不带单测：`WebResourceResponse` 在 JVM 单测里是 `android.jar` 的 stub，断言它的字段只会
  * 得到假绿。判定逻辑一行都不许挪进来。
+ *
+ * @param inlineDocumentStartScript 只在 `DOCUMENT_START_SCRIPT` **不支持**时为 true，此时 HTML 响应
+ *   经 [DocumentStartScript.inlineInto] 改写。这是注入的兜底路径，与 `addDocumentStartJavaScript`
+ *   **互斥**——两条都走会让 `injected` 变 2，`inject-order` 当场红，而那种红看起来像注入坏了。
  */
 class CrabAssetPathHandler(
     private val assets: AssetManager,
+    private val inlineDocumentStartScript: Boolean,
 ) : WebViewAssetLoader.PathHandler {
     /** 返回类型收紧成非空：这个 handler 永不返回 null（见类注释）。 */
     override fun handle(path: String): WebResourceResponse =
@@ -34,18 +40,35 @@ class CrabAssetPathHandler(
 
     private fun openAsset(route: AssetRoute.Hit): WebResourceResponse =
         try {
-            WebResourceResponse(
-                route.mimeType,
-                encodingFor(route.mimeType),
-                200,
-                "OK",
-                NO_STORE_HEADERS,
-                assets.open(route.assetPath),
-            )
+            if (inlineDocumentStartScript && DocumentStartScript.appliesTo(route.mimeType)) {
+                inlinedHtml(route)
+            } else {
+                WebResourceResponse(
+                    route.mimeType,
+                    encodingFor(route.mimeType),
+                    200,
+                    "OK",
+                    NO_STORE_HEADERS,
+                    assets.open(route.assetPath),
+                )
+            }
         } catch (error: IOException) {
             // 路由说该有、assets 里却没有：故意删掉入口文件那一遍走的就是这条路，回 404 让错误态接上。
             intercepted()
         }
+
+    /** 兜底注入：整份读进内存再改写。承载的 HTML 是自己打进 APK 的，大小可控。 */
+    private fun inlinedHtml(route: AssetRoute.Hit): WebResourceResponse {
+        val html = assets.open(route.assetPath).use { it.readBytes().toString(Charsets.UTF_8) }
+        return WebResourceResponse(
+            route.mimeType,
+            "utf-8",
+            200,
+            "OK",
+            NO_STORE_HEADERS,
+            ByteArrayInputStream(DocumentStartScript.inlineInto(html).toByteArray(Charsets.UTF_8)),
+        )
+    }
 
     private fun intercepted(): WebResourceResponse =
         WebResourceResponse(

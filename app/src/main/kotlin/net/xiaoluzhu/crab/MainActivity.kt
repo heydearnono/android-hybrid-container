@@ -20,7 +20,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        container = CrabContainer(this, isDebugBuild = BuildConfig.DEBUG)
+        container =
+            CrabContainer(
+                context = this,
+                isDebugBuild = BuildConfig.DEBUG,
+                versionName = BuildConfig.VERSION_NAME,
+            )
         container.loadEntry()
         setContent {
             MaterialTheme {

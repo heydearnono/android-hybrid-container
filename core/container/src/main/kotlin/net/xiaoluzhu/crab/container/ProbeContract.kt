@@ -11,6 +11,12 @@ object ProbeContract {
     /** 页面把单条结果打到 console 的前缀；`WebChromeClient.onConsoleMessage` 原样转 logcat。 */
     const val LOG_PREFIX: String = "CRAB-PROBE"
 
+    /**
+     * 环境自报的前缀。**不是断言**，不参与那十六行：它打的是 UA 与 `typeof localStorage`，
+     * 用来在差异表里填「加载后生效」那几格。前缀与断言分开，probe.sh 回读时不会把它当结果。
+     */
+    const val LOG_PREFIX_ENV: String = "CRAB-ENV"
+
     /** 拦截未命中时返回体里的固定标记：页面读到它就说明请求被容器接住了，没有落到网上。 */
     const val MARKER_INTERCEPTED: String = "INTERCEPTED"
 

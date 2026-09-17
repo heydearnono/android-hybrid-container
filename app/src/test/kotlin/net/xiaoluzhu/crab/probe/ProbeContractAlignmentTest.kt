@@ -2,6 +2,7 @@ package net.xiaoluzhu.crab.probe
 
 import net.xiaoluzhu.crab.container.AssetRoute
 import net.xiaoluzhu.crab.container.AssetRouting
+import net.xiaoluzhu.crab.container.DocumentStartScript
 import net.xiaoluzhu.crab.container.HostingOrigin
 import net.xiaoluzhu.crab.container.ProbeContract
 import java.io.File
@@ -15,7 +16,7 @@ import kotlin.test.assertTrue
  * `.html` / `.js` / `.sh` 不在编译器、Spotless、lint 的覆盖范围里，改错一个 slug 不会有任何编译期反馈，
  * 表现只是探针少一行结果——而少一行会被读成 FAIL。
  *
- * M2 只覆盖到页面自己能判的那六条；注入（M3）与导航/对话框/权限（M4）落地时在这里加。
+ * M3 覆盖到页面自己能判的八条；导航/对话框/权限（M4）落地时在这里加。
  */
 class ProbeContractAlignmentTest {
     private val indexHtml = RepoFiles.text(INDEX_HTML)
@@ -35,13 +36,29 @@ class ProbeContractAlignmentTest {
 
     @Test
     fun `入口页留着注入标记，且它在页面自己的第一段脚本之前`() {
-        val marker = indexHtml.indexOf(INJECT_MARKER)
-        assertTrue(marker >= 0, "$INDEX_HTML 里没有 $INJECT_MARKER；M3 的兜底注入要往这里插")
+        // 标记的字面量取自 DocumentStartScript：兜底注入按它找插入点，两边写歪一个字就静默不注入。
+        val marker = indexHtml.indexOf(DocumentStartScript.MARKER)
+        assertTrue(marker >= 0, "$INDEX_HTML 里没有 ${DocumentStartScript.MARKER}；兜底注入要往这里插")
         val firstScript = indexHtml.indexOf("<script")
         assertTrue(
             firstScript < 0 || marker < firstScript,
-            "$INJECT_MARKER 必须排在页面自己的第一段脚本之前，否则 inject-order 判的就不是「开口之前」",
+            "${DocumentStartScript.MARKER} 必须排在页面自己的第一段脚本之前，否则 inject-order 判的就不是「开口之前」",
         )
+    }
+
+    @Test
+    fun `快照脚本夹在注入标记与 probe_js 之间——它是 inject-order 的取证点`() {
+        val marker = indexHtml.indexOf(DocumentStartScript.MARKER)
+        val snapshot = indexHtml.indexOf(SNAPSHOT_GLOBAL)
+        // 找 src 属性而不是裸文件名：注释里也会提到 probe.js，裸文件名会匹配到注释上去（踩过）。
+        val probeJsTag = indexHtml.indexOf("src=\"probe.js\"")
+
+        assertTrue(snapshot > marker, "$SNAPSHOT_GLOBAL 必须在注入之后取，否则取到的是空快照")
+        assertTrue(
+            probeJsTag > snapshot,
+            "$SNAPSHOT_GLOBAL 必须在 probe.js 之前取；probe.js 只读快照，不自己看当下的 __CRAB__",
+        )
+        assertTrue(probeJs.contains(SNAPSHOT_GLOBAL), "$PROBE_JS 要读 $SNAPSHOT_GLOBAL 来判 inject-order")
     }
 
     @Test
@@ -66,6 +83,10 @@ class ProbeContractAlignmentTest {
         assertTrue(
             probeJs.contains("'${ProbeContract.LOG_PREFIX} '"),
             "探针页打结果用的前缀必须是 ${ProbeContract.LOG_PREFIX}，probe.sh 按它回读",
+        )
+        assertTrue(
+            probeJs.contains("'${ProbeContract.LOG_PREFIX_ENV} '"),
+            "探针页打环境自报用的前缀必须是 ${ProbeContract.LOG_PREFIX_ENV}",
         )
     }
 
@@ -121,6 +142,6 @@ class ProbeContractAlignmentTest {
         const val PROBE_SH = "scripts/probe.sh"
         const val OUT_OF_BOUNDS_ASSET = "outside/out-of-bounds.txt"
         const val OUT_OF_BOUNDS = "app/src/main/assets/$OUT_OF_BOUNDS_ASSET"
-        const val INJECT_MARKER = "<!--CRAB-INJECT-->"
+        const val SNAPSHOT_GLOBAL = "window.__CRAB_SNAPSHOT__"
     }
 }
