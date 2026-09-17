@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 抑制一律按路径写，不在 convention plugin 里全局 disable -->
 <lint>
     <!--
-      按路径关掉，而不是在 convention plugin 里全局 disable：ObsoleteSdkInt 对代码里
-      过时的 Build.VERSION.SDK_INT 判断是有用的，只有 adaptive icon 这一处例外
-      （去掉 -v26 会让 AAPT 找不到资源，已实测）。
+      自适应图标必须留在 mipmap-anydpi-v26。minSdk 已经 37，ObsoleteSdkInt 会建议合并到 mipmap-anydpi，
+      但实测那样 AAPT 找不到 mipmap/ic_launcher，构建直接失败。
     -->
     <issue id="ObsoleteSdkInt">
-        <ignore path="src/main/res/mipmap-anydpi-v26" />
+        <ignore path="src/main/res/mipmap-anydpi-v26/ic_launcher.xml" />
     </issue>
 </lint>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Compose 自己画 TopAppBar，所以用 NoActionBar，避免出现两条标题栏。 -->
-    <style name="Theme.Base" parent="@android:style/Theme.Material.Light.NoActionBar" />
+    <!-- 容器全屏承载页面，不要系统 ActionBar -->
+    <style name="Theme.Crab" parent="@android:style/Theme.Material.Light.NoActionBar" />
 </resources>

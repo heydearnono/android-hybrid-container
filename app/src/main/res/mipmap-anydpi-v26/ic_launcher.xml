@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  minSdk 26 起 adaptive icon 是唯一形态，所以只需要这一份 XML，不用为各 density 准备 PNG。
-
-  `-v26` 不能去掉：lint 的 ObsoleteSdkInt 会建议合并到 mipmap-anydpi（因为 minSdk 已经是 26），
-  但实测那样 AAPT 会直接找不到 mipmap/ic_launcher，资源根本没被合并进来。
-  这条建议在 app/lint.xml 里按路径关掉了。
+  自适应图标。-v26 这个限定符不能去掉：lint 的 ObsoleteSdkInt 会建议把它合并进 mipmap-anydpi，
+  但实测那样 AAPT 直接找不到 mipmap/ic_launcher。所以这条 lint 按路径在 app/lint.xml 里关掉。
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>

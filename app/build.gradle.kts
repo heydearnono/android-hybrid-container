@@ -1,38 +1,25 @@
 plugins {
-    id("base.android.application")
-    id("base.android.compose")
+    id("crab.android.application")
+    id("crab.android.compose")
 }
 
 android {
-    namespace = "com.heydearnono.hybrid"
+    namespace = "net.xiaoluzhu.crab"
 
     defaultConfig {
-        applicationId = "com.heydearnono.hybrid"
+        // 标识取 pro 的取值表：三端同一个字符串。applicationId 与 namespace 是两个东西，这里刻意取同值
+        applicationId = "net.xiaoluzhu.crab"
         versionCode = 1
-        versionName = "0.1.0"
     }
 
-    // AGP 9 起 buildConfig 默认关闭。这里需要 BuildConfig.DEBUG 来决定是否打开网络日志。
     buildFeatures {
+        // AGP 9 默认 false；调试开关要按构建类型取值，得读 BuildConfig.DEBUG
         buildConfig = true
     }
 }
 
 dependencies {
-    implementation(project(":core:designsystem"))
-    // :app 是唯一知道「实现是谁」的地方——只有这里能依赖 :core:data / :core:network。
-    implementation(project(":core:data"))
-    implementation(project(":core:network"))
-    // bridge 的 port 里有两个只有 :app 能实现（要应用版本号、要导航图）。
     implementation(project(":core:webview"))
-    implementation(project(":feature:articles"))
-    implementation(project(":feature:web"))
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.koin.android)
-    // koinInject()：NavHost 要把 NavController 装到 AppNativeRouter 上。
-    implementation(libs.koin.compose)
 }

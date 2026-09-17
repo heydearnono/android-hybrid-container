@@ -4,7 +4,7 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "com.heydearnono.hybrid.buildlogic"
+group = "net.xiaoluzhu.crab.buildlogic"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -13,35 +13,35 @@ java {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
 dependencies {
-    // compileOnly：convention plugin 只需要在编译期看到这些类型。运行期由消费方 build 的
-    // classpath 提供（根 build.gradle.kts 里 `apply false` 声明的那几个插件）。
+    // compileOnly：这三个插件运行期由主工程根 build.gradle.kts 的 apply false 提供
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
-    compileOnly(libs.compose.compiler.gradlePlugin)
+    compileOnly(libs.compose.gradlePlugin)
 }
 
+// 写成 Plugin<Project> 类而不是预编译脚本插件：类里能读版本目录、能共用 AndroidConfig.kt 那几个函数
 gradlePlugin {
     plugins {
         register("jvmLibrary") {
-            id = "base.jvm.library"
-            implementationClass = "JvmLibraryConventionPlugin"
+            id = "crab.jvm.library"
+            implementationClass = "net.xiaoluzhu.crab.buildlogic.JvmLibraryConventionPlugin"
         }
         register("androidLibrary") {
-            id = "base.android.library"
-            implementationClass = "AndroidLibraryConventionPlugin"
+            id = "crab.android.library"
+            implementationClass = "net.xiaoluzhu.crab.buildlogic.AndroidLibraryConventionPlugin"
         }
         register("androidApplication") {
-            id = "base.android.application"
-            implementationClass = "AndroidApplicationConventionPlugin"
+            id = "crab.android.application"
+            implementationClass = "net.xiaoluzhu.crab.buildlogic.AndroidApplicationConventionPlugin"
         }
         register("androidCompose") {
-            id = "base.android.compose"
-            implementationClass = "AndroidComposeConventionPlugin"
+            id = "crab.android.compose"
+            implementationClass = "net.xiaoluzhu.crab.buildlogic.AndroidComposeConventionPlugin"
         }
     }
 }

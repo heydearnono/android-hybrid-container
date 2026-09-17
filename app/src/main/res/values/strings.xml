@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Base</string>
+    <!-- 应用名取 pro 的取值表：默认 Crab，中文显示名在 values-zh -->
+    <string name="app_name">Crab</string>
 </resources>

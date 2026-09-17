@@ -1,19 +1,14 @@
 plugins {
-    id("base.android.library")
-    id("base.android.compose")
+    id("crab.android.library")
 }
 
 android {
-    namespace = "com.heydearnono.hybrid.core.webview"
+    namespace = "net.xiaoluzhu.crab.webview"
 }
 
 dependencies {
-    // api：容器的公开签名里有 BridgeDispatcher / BridgeSecurityConfig，调用方必须能看见。
-    api(project(":core:bridge"))
-    implementation(project(":core:common"))
-
+    // 必须是 api：公开类的超类型来自 implementation 依赖时，:app 会报
+    // Cannot access '...' which is a supertype of '...'
+    api(project(":core:container"))
     implementation(libs.androidx.webkit)
-    implementation(libs.kotlinx.coroutines.core)
-    // androidContext()：Toaster / KeyValueStore 的实现都要 Context。
-    implementation(libs.koin.android)
 }

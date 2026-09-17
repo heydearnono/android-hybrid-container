@@ -8,7 +8,7 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    // 仓库只在这里声明。模块里再写 repositories 直接构建失败，避免依赖来源分叉。
+    // 仓库只在这里声明一处；模块里再写 repositories 直接构建失败
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
@@ -18,17 +18,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "android-hybrid-container"
 
+// 三个模块按「能否在 JVM 上测」切：判定逻辑全在 :core:container，碰 android.webkit 的直线代码全在 :core:webview
 include(":app")
-
-// 纯 JVM 模块：业务逻辑放这里，测试不需要设备。
-include(":core:common")
-include(":core:domain")
-include(":core:network")
-include(":core:data")
-include(":core:bridge")
-
-// 依赖 Android 运行时的模块。
-include(":core:designsystem")
+include(":core:container")
 include(":core:webview")
-include(":feature:articles")
-include(":feature:web")
