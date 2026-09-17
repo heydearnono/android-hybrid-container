@@ -31,6 +31,10 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 「待模拟器核实」写进 `TASKS.md`，**不要假装验证过**。要打开这条路，需要用户在 SDK Manager 里装
 `cmdline-tools`，再拉一个 **API 37 的 system-image** 建 AVD（minSdk 37 抬高了验收门槛）。
 
+那一半怎么跑写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)：`probe.sh` 里的六步人工步骤，加上必须单独跑的
+「删掉入口文件」「杀渲染进程两次」「切后台 / 销毁 / 在入口页直接后退」。**`probe.sh` 不代按**——
+代按（`adb shell input tap`）坐标一变就点在别处，而它照样会打出 PASS。
+
 **WebView 是这条边界上最危险的地方。** `android.webkit` / `androidx.webkit` 在单测里是 `android.jar`
 的 stub。`testOptions.unitTests.isReturnDefaultValues` **刻意没开**：开了以后 stub 会静默返回默认值，
 给容器写的测试会绿、而那个绿是假的，比没有测试更坏（pro 的 M3 明写这一条）。所以：
@@ -71,6 +75,9 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 - **SSL 一律 `cancel()`，一次也不许 `proceed()`。** 承载域落在 `.invalid` 下，收到 SSL 错误说明有请求
   漏到了网上
 - **`onRenderProcessGone` 必须返回 true**，返回 false 系统会杀掉整个应用进程
+- **远程调试开关取构建类型，不许写死。** `RemoteDebugging.enabledFor(BuildConfig.DEBUG)` →
+  `WebView.setWebContentsDebuggingEnabled`，调用点在 `CrabApplication`（那个开关是进程级的，
+  跟着某个 WebView 实例走会漏掉换过之后的那个）。`AppDebugSwitchTest` 扫源码盯着这一句
 - **`.js` / `.html` 没有任何自动化兜底**（不在 Spotless 范围、没有 JS lint）。探针页与 Kotlin 侧的对应
   关系（slug 清单、`<!--CRAB-INJECT-->` 标记、`window.__CRAB__` 的形状）只能靠单测扫文本兜着，改一边
   必须改另一边
@@ -152,4 +159,9 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 - 不提交 API Key、签名密钥。`.gitignore` 已拦 `*.jks` / `*.keystore` / `keystore.properties` /
   `local.properties`
 - 不擅自 `git commit`、不擅自推远端。要提交时由用户明确要求
-- 架构决策写进 `docs/adr/`，模板见 `docs/adr/TEMPLATE.md`。**已定过的决策不要重新争论，先读 ADR**
+- 架构决策写进 `docs/adr/`，模板见 `docs/adr/TEMPLATE.md`。**已定过的决策不要重新争论，先读 ADR**：
+  [0001 验证闭环两条命令](docs/adr/0001-验证闭环两条命令.md)、
+  [0002 按可测性切三模块](docs/adr/0002-按可测性切三模块.md)、
+  [0003 手写 fake 不引 mock](docs/adr/0003-手写-fake-不引-mock.md)、
+  [0004 承载 origin 单点定义与 404 兜底](docs/adr/0004-承载-origin-单点定义与-404-兜底.md)、
+  [0005 运行记录只有探针页一种形式](docs/adr/0005-运行记录只有探针页一种形式.md)

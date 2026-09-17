@@ -19,6 +19,9 @@
 `check.sh` 管判定逻辑，`probe.sh` 管「在真容器里到底成不成立」。两条都不能替代另一条：写进
 `WebSettings` 的那几行 JVM 单测断不了，而路径归一化与导航闸门不该等到模拟器上才发现写错。
 
+`probe.sh` **不代按**：八个按钮、三个对话框、系统 scheme 那一跳都要人手做完再回车让它回读 logcat。
+人工步骤（含「删掉入口文件」「杀渲染进程两次」这些必须单独跑的）在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)。
+
 当前进度与每一条要求的核实状态在 [`TASKS.md`](TASKS.md)。踩过的坑在
 [`docs/PITFALLS.md`](docs/PITFALLS.md)，架构决策在 [`docs/adr/`](docs/adr/)。
 
