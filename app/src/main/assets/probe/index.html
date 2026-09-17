@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Crab 探针</title>
+    <!--CRAB-INJECT-->
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font: 15px/1.5 -apple-system, "Helvetica Neue", sans-serif;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      p.hint {
+        margin: 0 0 12px;
+        opacity: 0.7;
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      td {
+        padding: 4px 6px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+        vertical-align: top;
+      }
+      td.slug {
+        white-space: nowrap;
+        font-family: ui-monospace, monospace;
+      }
+      td.verdict {
+        width: 4em;
+        font-weight: 700;
+      }
+      td.detail {
+        font-size: 12px;
+        opacity: 0.75;
+        word-break: break-all;
+      }
+      .PASS {
+        color: #128a2b;
+      }
+      .FAIL {
+        color: #c1121f;
+      }
+      #env {
+        margin-top: 12px;
+        font-size: 12px;
+        opacity: 0.75;
+        word-break: break-all;
+      }
+      img#subresource {
+        width: 24px;
+        height: 24px;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Crab 探针</h1>
+    <p class="hint">每条结果同时打到 console（<code>CRAB-PROBE &lt;slug&gt; PASS|FAIL</code>），由 scripts/probe.sh 回读。</p>
+    <img id="subresource" src="probe.png" alt="子资源探针图" />
+    <table>
+      <tbody id="results"></tbody>
+    </table>
+    <div id="env"></div>
+    <script src="probe.js"></script>
+  </body>
+</html>

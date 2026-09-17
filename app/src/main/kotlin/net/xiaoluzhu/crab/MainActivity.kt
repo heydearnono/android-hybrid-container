@@ -3,40 +3,49 @@ package net.xiaoluzhu.crab
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import net.xiaoluzhu.crab.webview.CrabContainer
 
-/** M1 只要求装得上、屏幕上有一个原生页面，这一步不碰 WebView。 */
+/**
+ * 容器的宿主。**只做装配与生命周期**，判定逻辑一条都不在这里。
+ *
+ * 错误态 UI、返回键接管在 M4 加上。
+ */
 class MainActivity : ComponentActivity() {
+    private lateinit var container: CrabContainer
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        container = CrabContainer(this, isDebugBuild = BuildConfig.DEBUG)
+        container.loadEntry()
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Placeholder()
+                    AndroidView(
+                        factory = { container.webView },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
         }
     }
-}
 
-@Composable
-private fun Placeholder() {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = "Crab", style = MaterialTheme.typography.headlineMedium)
-        Text(text = "M1 · 原生页面已起来", style = MaterialTheme.typography.bodyMedium)
+    override fun onPause() {
+        super.onPause()
+        container.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        container.onResume()
+    }
+
+    override fun onDestroy() {
+        container.destroy()
+        super.onDestroy()
     }
 }

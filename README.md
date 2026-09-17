@@ -34,5 +34,7 @@
 
 ## 取值
 
-一律取 pro 的取值表，端内不另定；`https://and.crab.invalid` 这个字符串全仓只允许出现在
-`HostingOrigin.kt` 一处，有一条单测盯着。
+一律取 pro 的取值表，端内不另定。承载 origin 那个字符串只允许出现在两处：定义处
+`core/container/.../HostingOrigin.kt`，以及探针页的 `app/src/main/assets/probe/probe.js`（页面要拿它当
+期望值比对）。`HostingOriginSingleDefinitionTest` 扫源码树盯着「没有第三处」，
+`ProbeContractAlignmentTest` 盯着「探针页那份与定义处逐字相等」。文档里的引用不算，它们不参与运行。

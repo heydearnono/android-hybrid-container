@@ -57,7 +57,9 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 
 - **承载 origin 只定义一处。** `HostingOrigin.kt` 里的那个字符串喂给三处：`WebViewAssetLoader` 的
   域名、`addDocumentStartJavaScript` 的 `allowedOriginRules`、`shouldOverrideUrlLoading` 的放行判定。
-  有一条单测扫源码树，断言它除定义处外零命中——这是 M2 要求的「一条可执行检查」，走查不算
+  唯一的例外是探针页 `probe.js` 里那份期望值（页面要拿它比 `location.origin`），
+  `ProbeContractAlignmentTest` 钉住它与定义处逐字相等。`HostingOriginSingleDefinitionTest` 扫源码树断言
+  没有第三处——这是 M2 要求的「一条可执行检查」，走查不算
 - **拦截点未命中必须自己回 404 + `INTERCEPTED`。** `shouldInterceptRequest` 返回 null 的语义是交回
   WebView 默认处理，请求会**真发到网上**
 - **注入与兜底不许叠加。** `DOCUMENT_START_SCRIPT` 支持则走 `addDocumentStartJavaScript`，不支持则**只**
