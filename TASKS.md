@@ -78,4 +78,53 @@ M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六�
    「可能需要换 sandbox+srcdoc 退路」。**换退路要三端一起换，得回 pro 议，端内不自决**
 3. 文字大小跟不跟随系统字号（`textZoom = 100` 是否真的挡住了系统字号）
 
+## M4 · 导航与降级
+
+M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin` / `nav-blank` /
+`nav-system-scheme` / `nav-unknown-scheme` / `dialog` / `permission`）。**其中四条页面判不了**——被拦下的
+那一跳页面什么都收不到，证据只在容器打的 `CRAB-NAV` 里，由 `scripts/probe.sh` 从 logcat 回读。
+
+判定全在 `:core:container`（`NavigationGate` / `CrabLog` / `ContainerStateMachine` /
+`RenderProcessRecovery` / `ContainerCoordinator`，都有单测）；`:core:webview` 只把回调原样转进来、把返回
+值原样转回去。
+
+| 判据 | 本端落点 | 状态 |
+| --- | --- | --- |
+| 同 origin 跳转放行 | `NavigationGate.decide` → `Allow`；`NavigationGateTest` | 已落地 |
+| 返回键回上一页，到底交回宿主 | `MainActivity.backCallback`（`canGoBack()` → `goBack()`，否则 `remove()` 后重新分发） | 待模拟器核实 |
+| 跨 origin 拦下 + 一行 `CRAB-NAV nav-cross-origin`，**不交系统浏览器** | `NavigationGate` → `Deny`；`ContainerCoordinatorTest` 断言 `openInSystem` 没被调 | 已落地 |
+| 看起来像子域的 `…invalid.evil.com` 判为跨 origin | `HostingOrigin.isHostingOrigin` 比 host 全等，不做前缀匹配；`NavigationGateTest` | 已落地 |
+| `_blank` 与 `window.open` 各留一行 `nav-blank` | `onCreateWindow` → `onWindowOpenRequest`（返回 false = 不开窗）；`probe.sh` 要求这行 **≥2 条** | 已落地 / 行数待模拟器核实 |
+| `tel:` / `mailto:` 交系统 + 一行 `nav-system-scheme` | `NavigationGate` → `HandOffToSystem`；`AndroidActions.openInSystem` 起 `ACTION_VIEW` | 已落地 / 拨号盘邮件是否真起来待核实 |
+| 未知 scheme 拦下 + 一行，**且进程还活着** | 同 `Deny` 一条路；`probe.sh` 额外查 `pidof net.xiaoluzhu.crab` | 已落地 / 进程存活待模拟器核实 |
+| 三种对话框各一行 `CRAB-DLG`，`JsResult` **必须回一次** | `CrabWebChromeClient` 三个 `onJs*`，回值在 `setOnDismissListener` 里统一给（关按钮、点外面也算） | 已落地 / 弹窗与恢复执行待模拟器核实 |
+| 权限一律拒绝 + 每项一行 `CRAB-PERM` | `onPermissionRequest`（`deny()`）与 `onGeolocationPermissionsShowPrompt`（`invoke(origin, false, false)`）两处都接 | 已落地 / 定位那条待模拟器核实 |
+| 主文档加载失败进错误态 + `CRAB-ERR load <码>` | `ContainerStateMachine` 过滤子帧；`onReceivedError` 与 `onReceivedHttpError` 都转 | 已落地 / 删入口文件那一遍待模拟器核实 |
+| 错误界面文案「页面没能打开」+「重试」按钮 | `MainActivity.ErrorScreen` + `values/strings.xml`（场景与错误码只进 logcat，不上屏） | 已落地 / 上屏待模拟器核实 |
+| 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / 造得出来才算核实 |
+| 重试回 Loading、重新加载、额度给满 | `ContainerCoordinator.onRetry`；`ContainerCoordinatorTest` | 已落地 |
+| SSL 错误只 `cancel()`，一次也不许 `proceed()` | `CrabWebViewClient.onReceivedSslError` | 已落地 / **这条路没有观察面**（见下） |
+| 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | 待模拟器核实 |
+| 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | 待模拟器核实 |
+
+### M4 留下的四处不确定，照实记
+
+1. **SSL 主文档判定是近似。** `onReceivedSslError` 不带 `WebResourceRequest`，拿不到主帧位，只能拿
+   `SslError.getUrl()` 与 `WebView.getUrl()` 比。判错的后果是错误态多进或少进一次。而承载 origin 落在
+   `.invalid` 下、解析就会失败，轮不到证书校验，**所以这条路本身造不出来**：真收到一次说明有请求漏到了
+   网上，那是 M2「承载 origin 上不发真实网络请求」被破的证据
+2. **渲染进程终止造不造得出来未知。** 取法写在 `docs/RUNBOOK.md`（`adb root` + `kill -9` 渲染进程）。
+   `adb root` 在 Google Play 镜像上不可用，那种镜像上这一格只能空着
+3. **相机与麦克风只剩走查。** pro 明写探针页只按定位这一条。代码上 `onPermissionRequest` 对
+   `request.resources` 里的每一项都打一行再整体 `deny()`，与定位走的是同一条路，但**没有观察面**，
+   M5 里按未验证写
+4. **`nav-blank` 的两行分不出是谁打的。** `onCreateWindow` 拿不到目标地址（在 `resultMsg` 的 transport
+   里，只有真的建了窗口才取得到），所以两行的 URL 位置都是发起页，靠**条数**判而不是靠内容判
+
+### 端内自定的部分（pro 没定，报给你知道）
+
+- `CRAB-ERR <场景>` 那三个词 `load` / `ssl` / `render-gone` 是端内起的。pro 只定了这行的形状
+- 探针页的循环音（`tone.wav`）与每秒 tick 是端内加的：pro 要求人工看一次「切后台媒体停播、计时器停」，
+  而不给点声音、不给个在走的数就没什么可看。tick 同时打进 `CRAB-ENV`，断口在 logcat 里也能回读
+
 <!--TASKS-BODY-->

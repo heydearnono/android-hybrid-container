@@ -27,6 +27,21 @@ object ProbeContract {
     const val PROMPT_INPUT: String = "CRAB"
 
     /**
+     * 四个越界目标，取值来自 pro 的取值表，**端内不另定**。探针页的按钮按这四个地址跳，
+     * `ProbeContractAlignmentTest` 盯着页面里的字面量与这里逐字相等。
+     *
+     * 域名同样落在 RFC 6761 保留的 `.invalid` 之下：闸门万一漏了，最坏也只是解析失败，
+     * 不会真打到一台陌生服务器上。
+     */
+    const val TARGET_CROSS_ORIGIN: String = "https://out.crab.invalid/"
+
+    const val TARGET_UNKNOWN_SCHEME: String = "crabx://probe"
+
+    const val TARGET_MAILTO: String = "mailto:probe@crab.invalid"
+
+    const val TARGET_TEL: String = "tel:+15555550100"
+
+    /**
      * 十六条断言，**顺序即输出顺序**。`scripts/probe.sh` 按这个顺序打十六行
      * `<slug> PASS|FAIL|MANUAL`。
      */

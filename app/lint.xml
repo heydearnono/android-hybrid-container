@@ -8,4 +8,13 @@
     <issue id="ObsoleteSdkInt">
         <ignore path="src/main/res/mipmap-anydpi-v26/ic_launcher.xml" />
     </issue>
+
+    <!--
+      values-zh 只为「应用名叫螃蟹」而存在。错误界面那两条 pro 定死了中文原文、要求三端一字不差，
+      所以刻意只留 values/ 那一份；MissingTranslation 会因此报缺 zh 翻译，抑制掉它，别为了让 lint 闭嘴
+      而在 values-zh 里复制一份同样的字（那会变成两处定义，改一处就漏）。
+    -->
+    <issue id="MissingTranslation">
+        <ignore path="src/main/res/values/strings.xml" />
+    </issue>
 </lint>

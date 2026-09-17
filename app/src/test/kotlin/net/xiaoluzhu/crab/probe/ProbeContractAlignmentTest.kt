@@ -16,7 +16,8 @@ import kotlin.test.assertTrue
  * `.html` / `.js` / `.sh` 不在编译器、Spotless、lint 的覆盖范围里，改错一个 slug 不会有任何编译期反馈，
  * 表现只是探针少一行结果——而少一行会被读成 FAIL。
  *
- * M3 覆盖到页面自己能判的八条；导航/对话框/权限（M4）落地时在这里加。
+ * M4 之后页面自己能判十二条，剩下四条（三条 `CRAB-NAV` + 永远 MANUAL 的 `nav-system-scheme`）
+ * 只在 logcat 里，由 `probe.sh` 回读。
  */
 class ProbeContractAlignmentTest {
     private val indexHtml = RepoFiles.text(INDEX_HTML)
@@ -80,6 +81,7 @@ class ProbeContractAlignmentTest {
     fun `探针页用的固定标记与 ProbeContract 一致`() {
         assertEquals(ProbeContract.MARKER_INTERCEPTED, jsConstant("MARKER_INTERCEPTED"))
         assertEquals(ProbeContract.MARKER_OUT_OF_BOUNDS, jsConstant("MARKER_OUT_OF_BOUNDS"))
+        assertEquals(ProbeContract.PROMPT_INPUT, jsConstant("PROMPT_INPUT"), "prompt 要输入什么，页面与契约必须一致")
         assertTrue(
             probeJs.contains("'${ProbeContract.LOG_PREFIX} '"),
             "探针页打结果用的前缀必须是 ${ProbeContract.LOG_PREFIX}，probe.sh 按它回读",
@@ -88,6 +90,50 @@ class ProbeContractAlignmentTest {
             probeJs.contains("'${ProbeContract.LOG_PREFIX_ENV} '"),
             "探针页打环境自报用的前缀必须是 ${ProbeContract.LOG_PREFIX_ENV}",
         )
+    }
+
+    @Test
+    fun `四个越界目标在入口页里逐字出现`() {
+        val targets =
+            listOf(
+                ProbeContract.TARGET_CROSS_ORIGIN,
+                ProbeContract.TARGET_UNKNOWN_SCHEME,
+                ProbeContract.TARGET_MAILTO,
+                ProbeContract.TARGET_TEL,
+            )
+        for (target in targets) {
+            assertTrue(
+                indexHtml.contains(target),
+                "$INDEX_HTML 里按钮的地址必须逐字是 $target；写歪一个字按下去就不是 pro 说的那一跳了",
+            )
+        }
+    }
+
+    @Test
+    fun `第二页在承载目录里，路由指得到`() {
+        val route = AssetRouting.resolve(HostingOrigin.SECOND_PAGE_URL.removePrefix(HostingOrigin.ORIGIN))
+        val hit = assertIs<AssetRoute.Hit>(route, "第二页地址 ${HostingOrigin.SECOND_PAGE_URL} 被路由判成了 $route")
+        assertTrue(
+            File(RepoFiles.probeAssetsDir, hit.assetPath).isFile,
+            "nav-same-origin / nav-back 要跳到 ${hit.assetPath}，但 assets 里没有这个文件",
+        )
+        assertEquals("text/html", hit.mimeType)
+    }
+
+    @Test
+    fun `probe_js 绑的按钮在入口页里都有`() {
+        val bound =
+            Regex("""getElementById\('(btn-[a-z-]+)'\)""")
+                .findAll(probeJs)
+                .map { it.groupValues[1] }
+                .toSet()
+        assertTrue(bound.isNotEmpty(), "$PROBE_JS 一个按钮都没绑，对话框与权限两条就没人触发")
+        for (id in bound) {
+            assertTrue(
+                indexHtml.contains("id=\"$id\""),
+                "$PROBE_JS 绑了 #$id，但 $INDEX_HTML 里没有这个按钮——按下去什么都不会发生",
+            )
+        }
     }
 
     @Test

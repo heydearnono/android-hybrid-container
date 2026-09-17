@@ -122,6 +122,8 @@ object AssetRouting {
             "json" to "application/json",
             "txt" to "text/plain",
             "png" to "image/png",
+            // 探针页那段循环音是「切后台媒体停播」唯一的观察面，MIME 认不出来会被当二进制、放不出声
+            "wav" to "audio/wav",
             "jpg" to "image/jpeg",
             "jpeg" to "image/jpeg",
             "gif" to "image/gif",

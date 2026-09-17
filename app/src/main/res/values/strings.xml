@@ -2,4 +2,12 @@
 <resources>
     <!-- 应用名取 pro 的取值表：默认 Crab，中文显示名在 values-zh -->
     <string name="app_name">Crab</string>
+
+    <!--
+      错误界面的文案与按钮，取值来自 pro 的取值表，三端一字不差。
+      刻意只有这一份（不给 values-zh 另写）：pro 定死的是这两个中文字符串本身，
+      翻译一份就等于三端文案不一致，而验收是靠并排看三份记录
+    -->
+    <string name="crab_error_message">页面没能打开</string>
+    <string name="crab_error_retry">重试</string>
 </resources>

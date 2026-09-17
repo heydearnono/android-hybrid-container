@@ -56,10 +56,10 @@ cat <<'CHECKLIST'
 == 人工步骤（做完再回车；细节见 docs/RUNBOOK.md）==
   1. 等页面上的自动断言都出结果（不再有「…」）
   2. 点「跳到第二页」，再按系统返回键回到入口页
-  3. 点「跨 origin」「_blank」「未知 scheme」三个按钮，各自留在入口页
+  3. 点「跨 origin」「_blank」「window.open」「未知 scheme」四个按钮，每次都该留在入口页
   4. 点「tel:」「mailto:」两个按钮，看是否跳出拨号盘/邮件（这条只能人工看，输出记 MANUAL）
-  5. 点「alert」「confirm」「prompt」三个按钮：confirm 选「确定」，prompt 里输入 CRAB
-  6. 点「摄像头/麦克风」「定位」按钮，确认弹不出系统授权框、页面拿到拒绝
+  5. 点「对话框」：alert 关掉、confirm 选「确定」、prompt 里输入 CRAB
+  6. 点「定位」，确认弹不出系统授权框、页面拿到失败回调（不是一直挂着）
 
 按回车开始回读 logcat …
 CHECKLIST
@@ -85,6 +85,24 @@ log_verdict() {
 }
 
 count_lines() { grep -cF "$1" "$LOG" || true; }
+
+# _blank 与 window.open 是两条路（用户点的 / 脚本发的），各要一行——只有一行说明其中一条被静默拦掉了。
+blank_verdict() {
+  local lines
+  lines="$(count_lines 'CRAB-NAV nav-blank ')"
+  if [[ ${lines:-0} -ge 2 ]]; then echo PASS; else echo FAIL; fi
+}
+
+# 未知 scheme 有两面：拒绝（那行日志）+ 不崩溃（回读时进程还在）。
+# 少了后半句就分不出「拦住了」和「拦的时候把应用带走了」。
+unknown_scheme_verdict() {
+  if [[ "$(log_verdict 'CRAB-NAV nav-unknown-scheme ')" == PASS ]] &&
+    [[ -n "$("$ADB" shell pidof "$APP_ID" | tr -d '\r')" ]]; then
+    echo PASS
+  else
+    echo FAIL
+  fi
+}
 
 # 页面读到答案 + 原生确实弹了三次，两边都要。
 dialog_verdict() {
@@ -121,10 +139,10 @@ emit inject-scope "$(page_verdict inject-scope)"
 emit nav-same-origin "$(page_verdict nav-same-origin)"
 emit nav-back "$(page_verdict nav-back)"
 emit nav-cross-origin "$(log_verdict 'CRAB-NAV nav-cross-origin ')"
-emit nav-blank "$(log_verdict 'CRAB-NAV nav-blank ')"
+emit nav-blank "$(blank_verdict)"
 # 跳没跳出拨号盘/邮件只有人眼能看见，容器这边只知道自己交了出去。
 emit nav-system-scheme MANUAL
-emit nav-unknown-scheme "$(log_verdict 'CRAB-NAV nav-unknown-scheme ')"
+emit nav-unknown-scheme "$(unknown_scheme_verdict)"
 emit dialog "$(dialog_verdict)"
 emit permission "$(permission_verdict)"
 

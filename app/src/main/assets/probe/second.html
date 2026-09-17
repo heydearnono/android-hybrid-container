@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Crab 探针 · 第二页</title>
+    <!--CRAB-INJECT-->
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font: 15px/1.5 -apple-system, "Helvetica Neue", sans-serif;
+      }
+      code {
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>第二页</h1>
+    <p>这一页装到了，说明同 origin 的跳转被放行了。</p>
+    <p><strong>现在按系统返回键回入口页</strong>——nav-back 靠入口页回读这一页留下的标记来判。</p>
+    <p>origin：<code id="origin"></code></p>
+    <script>
+      // 这一页只留标记，不打结果：nav-same-origin / nav-back 两条都由入口页在回读时报，
+      // 一条断言只允许有一个报出处，两边都报会让 probe.sh 取到哪一行取决于时序。
+      //
+      // 用 sessionStorage 而不是 localStorage：localStorage 会跨应用启动留着，上一轮的标记
+      // 会让这一轮不做任何人工步骤也判 PASS——假绿比红更坏。sessionStorage 随会话消失，
+      // 而同 origin 的前进后退在同一个会话里，正是要测的那段路
+      (function () {
+        'use strict';
+        document.getElementById('origin').textContent = location.origin;
+        try {
+          sessionStorage.setItem(
+            'crab.probe.nav',
+            JSON.stringify({ origin: location.origin, at: Date.now() })
+          );
+        } catch (error) {
+          // 存不进去的话入口页会判 nav-same-origin FAIL，细节从这行 console 里找。
+          console.log('CRAB-PROBE nav-same-origin FAIL 第二页写不进 sessionStorage: ' + error);
+        }
+      })();
+    </script>
+  </body>
+</html>

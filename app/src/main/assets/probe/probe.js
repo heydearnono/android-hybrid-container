@@ -14,8 +14,14 @@
   var EXPECTED_ORIGIN = 'https://and.crab.invalid';
   var MARKER_INTERCEPTED = 'INTERCEPTED';
   var MARKER_OUT_OF_BOUNDS = 'OUT_OF_BOUNDS';
+  var PROMPT_INPUT = 'CRAB';
 
-  // 页面自己能判的 slug，按 pro 的固定顺序排（M2 六条 + M3 两条；导航那几条在 M4 加）。
+  // 第二页留标记的键。sessionStorage 不是 localStorage：理由写在 second.html 里（跨启动的旧标记会假绿）。
+  var NAV_MARKER_KEY = 'crab.probe.nav';
+
+  // 页面自己能判的 slug，按 pro 的固定顺序排。剩下四条（nav-cross-origin / nav-blank /
+  // nav-system-scheme / nav-unknown-scheme）页面判不了——被拦下的那一跳页面什么都收不到，
+  // 证据只在容器打的 CRAB-NAV 里，由 probe.sh 回读。
   var PAGE_SLUGS = [
     'origin',
     'storage',
@@ -24,12 +30,19 @@
     'escape',
     'escape-encoded',
     'inject-order',
-    'inject-scope'
+    'inject-scope',
+    'nav-same-origin',
+    'nav-back',
+    'dialog',
+    'permission'
   ];
 
   // inject-scope 要等 iframe 里的脚本回话，超时就判 FAIL——不回话和「注入范围漏到子帧」表现不同，
   // 前者是 iframe 起不来，后者是回话说 object。两种都得留下证据。
   var SCOPE_TIMEOUT_MS = 3000;
+
+  // 定位被拒是要拿到 error 回调，不是无限等——挂着与拒了在页面侧看起来一样，超时给它一个结论。
+  var PERMISSION_TIMEOUT_MS = 5000;
 
   var rows = {};
 
@@ -176,6 +189,117 @@
     document.body.appendChild(iframe);
   }
 
+  // nav-same-origin / nav-back：第二页留在 sessionStorage 里的标记是唯一的证据。
+  // 这段脚本正在入口页上跑，标记又在，说明「去过第二页而且回来了」——页面上没有回链，
+  // 唯一的回法是系统返回键，所以这两条一起判。
+  function checkNavMarkers() {
+    var raw = null;
+    try {
+      raw = sessionStorage.getItem(NAV_MARKER_KEY);
+    } catch (error) {
+      report('nav-same-origin', false, 'sessionStorage 读不了: ' + error);
+      report('nav-back', false, 'sessionStorage 读不了: ' + error);
+      return;
+    }
+    if (!raw) {
+      // 人工步骤没做也是这条路，所以细节里点名步骤，别让人以为是容器拦错了。
+      report('nav-same-origin', false, '还没去过第二页（人工步骤：点「跳到第二页」）');
+      report('nav-back', false, '还没回过入口页（人工步骤：第二页上按系统返回键）');
+      return;
+    }
+    var marker = null;
+    try {
+      marker = JSON.parse(raw);
+    } catch (error) {
+      marker = null;
+    }
+    if (!marker) {
+      report('nav-same-origin', false, '标记读不出来: ' + raw);
+      report('nav-back', false, '标记读不出来: ' + raw);
+      return;
+    }
+    report('nav-same-origin', marker.origin === EXPECTED_ORIGIN,
+      'second.html 的 origin=' + marker.origin);
+    var onEntry = location.pathname.indexOf('index.html') >= 0;
+    report('nav-back', onEntry, 'now=' + location.pathname + ' second-at=' + marker.at);
+  }
+
+  // dialog：一个按钮依次弹三种（pro 定的形状）。
+  // alert 那一格判的不是文案，而是**脚本恢复执行了**——JsResult 没被回一次的话，
+  // window.alert() 永远不返回，后面的 confirm / prompt 压根不会弹，表现是这条断言停在「…」。
+  var dialogs = { alert: false, confirm: null, prompt: null };
+
+  function reportDialog() {
+    var ok = dialogs.alert === true && dialogs.confirm === true && dialogs.prompt === PROMPT_INPUT;
+    report('dialog', ok,
+      'alert=' + dialogs.alert + ' confirm=' + dialogs.confirm + ' prompt=' + dialogs.prompt);
+  }
+
+  // permission：容器一律拒绝，所以**拿到失败回调**才是 PASS；拿到坐标是漏了，一直挂着也是没做到
+  // （pro 要的是「给页面一个明确的失败，不许挂着」，所以超时算 FAIL 而不是等下去）。
+  //
+  // 只按定位这一条：相机/麦克风走 getUserMedia，那两样 pro 明写只剩代码走查。
+  var geolocationResult = null;
+
+  function reportPermission() {
+    var denied = typeof geolocationResult === 'string' && geolocationResult.indexOf('denied') === 0;
+    report('permission', denied, 'geolocation=' + geolocationResult);
+  }
+
+  function bindManualButtons() {
+    // 脚本发起的开窗：前置是 setJavaScriptCanOpenWindowsAutomatically，
+    // 它默认关着，关着的时候这一句被静默拦掉，onCreateWindow 压根不回调、日志也就没有。
+    document.getElementById('btn-window-open').addEventListener('click', function () {
+      window.open('second.html', '_blank');
+    });
+    document.getElementById('btn-dialogs').addEventListener('click', function () {
+      window.alert('Crab alert');
+      dialogs.alert = true;
+      dialogs.confirm = window.confirm('点「确定」');
+      dialogs.prompt = window.prompt('输入 ' + PROMPT_INPUT, '');
+      reportDialog();
+    });
+    document.getElementById('btn-geo').addEventListener('click', function () {
+      if (!navigator.geolocation) {
+        geolocationResult = 'no-api';
+        reportPermission();
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(function () {
+        geolocationResult = 'granted';
+        reportPermission();
+      }, function (error) {
+        geolocationResult = 'denied:' + error.code;
+        reportPermission();
+      }, { timeout: PERMISSION_TIMEOUT_MS });
+    });
+    // 「切后台媒体停播」不进十六行（pro 要求人工看一次），但看得见需要有东西在响。
+    // play() 返回 Promise：有声媒体要求手势这一项配错了它会 reject，那种失败在页面上看不出来，
+    // 所以把 reject 打进 CRAB-ENV——否则「没声音」会被当成「后台停播生效了」。
+    document.getElementById('btn-tone').addEventListener('click', function () {
+      var tone = document.getElementById('tone');
+      var started = tone.play();
+      if (started && typeof started.catch === 'function') {
+        started.catch(function (error) {
+          console.log('CRAB-ENV tone play rejected: ' + error);
+        });
+      }
+    });
+  }
+
+  // 计时器的观察面：每秒一跳，同时打进 CRAB-ENV。切后台十秒回来，时间戳该有一段断口——
+  // 这样「计时器停没停」在 logcat 里也能回读，不必只靠眼睛盯着屏幕上那个数。
+  function startTicker() {
+    var tick = 0;
+    var label = document.getElementById('tick');
+    setInterval(function () {
+      tick += 1;
+      var line = 'tick ' + tick + ' ' + new Date().toISOString();
+      label.textContent = line;
+      console.log('CRAB-ENV ' + line);
+    }, 1000);
+  }
+
   prepareRows();
   showEnvironment();
   checkOrigin();
@@ -186,4 +310,15 @@
   checkEscape('escape-encoded', '%2e%2e%2foutside/out-of-bounds.txt');
   checkInjectOrder();
   checkInjectScope();
+  checkNavMarkers();
+  bindManualButtons();
+  startTicker();
+
+  // 返回时页面若是从历史缓存里恢复的，上面那串不会再跑一遍——两条导航断言会停在返回前的结论。
+  // persisted 为真才补判：正常加载时 pageshow 也会来，重复判会把细节里的时间戳搅乱。
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+      checkNavMarkers();
+    }
+  });
 })();
