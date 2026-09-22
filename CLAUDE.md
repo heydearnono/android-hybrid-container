@@ -15,10 +15,17 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 3. **做不到时只走第 1 个出口（改本端实现）。** 放宽要求（出口 2）、允许本端偏离（出口 3）改的是三端
    共同的判据，**回 pro 议，不在这里自决**——遇到就停下来报给用户
 
+**平台事实（平台声明、还成立的技术约束）攒进 [`docs/待回流-pro.md`](docs/待回流-pro.md) 等回流，
+不自己去改 pro 的 `plan/`。** 工具链与环境的坑不回流，落 [`docs/PITFALLS.md`](docs/PITFALLS.md)。
+
 ## 验证闭环（最重要的一节）
 
 **本机没有真机、没有 AVD、没有 system-image、没有 cmdline-tools**，所以 AI 能自己跑完的验证只有三样：
 编译、JVM 单测、静态检查。
+
+**本仓有两处检出，能力不一样**：工作机有 API 37 的 AVD（运行记录都产在那边，但那台推不上远端），
+`~/Desktop/github` 下这处能推远端、跑不了模拟器。别把一处的事实当成两处的——差别见
+[`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」。
 
 ```bash
 ./scripts/check.sh          # spotlessCheck → assembleDebug → test → lint
@@ -31,8 +38,9 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 「待模拟器核实」写进 `TASKS.md`，**不要假装验证过**。要打开这条路，需要用户在 SDK Manager 里装
 `cmdline-tools`，再拉一个 **API 37 的 system-image** 建 AVD（minSdk 37 抬高了验收门槛）。
 
-那一半怎么跑写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)：`probe.sh` 里的六步人工步骤，加上必须单独跑的
-「删掉入口文件」「杀渲染进程两次」「切后台 / 销毁 / 在入口页直接后退」。**`probe.sh` 不代按**——
+那一半怎么跑写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)：`probe.sh` 里的六步人工步骤（**这六步已经在工作机
+上跑过一遍，十六行齐**），加上还没跑过的那几处——「删掉入口文件」「杀渲染进程两次」「切后台 / 销毁 /
+在入口页直接后退」「开机读 `CRAB-ENV` 那两行」「系统字号」「差异表实例 B」。**`probe.sh` 不代按**——
 代按（`adb shell input tap`）坐标一变就点在别处，而它照样会打出 PASS。
 
 **WebView 是这条边界上最危险的地方。** `android.webkit` / `androidx.webkit` 在单测里是 `android.jar`

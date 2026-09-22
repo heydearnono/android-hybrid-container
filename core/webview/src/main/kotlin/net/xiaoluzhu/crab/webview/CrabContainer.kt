@@ -47,6 +47,25 @@ class CrabContainer(
     private val documentStartScriptSupported: Boolean =
         WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
 
+    // 一次性诊断：把上面那个布尔连内核版本一起打出来。
+    //
+    // 为什么非打不可：`inject-order` 绿了认不出走的是原生注入还是兜底——两条路都要求 `injected == 1`，
+    // 那是设计意图。支持与否只能另打一次；而门控依赖的是 System WebView 的内核版本、不是系统版本，
+    // 所以版本号也得一起打，否则换个镜像就不知道这个结果还算不算。
+    //
+    // 前缀刻意写成字面量，不从 CrabLog 或 ProbeContract 派生：那两处是 pro 取值表钉死的契约、有单测
+    // 盯着、probe.sh 靠它们回读；这一行只是诊断，读到结果之后删掉它不该牵动契约。
+    //
+    // 用 // 而不是 KDoc，是因为 ktlint 的 standard:kdoc 不许 KDoc 出现在 class_initializer 上。
+    init {
+        val pkg = WebViewCompat.getCurrentWebViewPackage(context)
+        Log.i(
+            CrabLog.TAG,
+            "CRAB-ENV DOCUMENT_START_SCRIPT=$documentStartScriptSupported " +
+                "webview=${pkg?.packageName}/${pkg?.versionName}",
+        )
+    }
+
     private val assetLoader: WebViewAssetLoader =
         WebViewAssetLoader
             .Builder()

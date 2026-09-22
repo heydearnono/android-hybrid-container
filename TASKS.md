@@ -5,25 +5,88 @@ API、动哪个文件、哪条单测、现在是什么状态。
 
 ## 按的是 pro 的哪个版本
 
-- commit `e857625`（「答掉 M1 剩下两条鸿蒙待核实：bundleName 的字符规则、以及它什么时候锁死」），
-  pro 工作区干净，本清单按的就是这份提交
-- 上一版按的是 `e13f506`（「加一份开工文档:三端并行的顺序与动作」）加当时未提交的工作区内容。
-  `e13f506..e857625` 两个提交逐行读过（7 个文件，+64/−18），全是另外两端的事：
-  `72493ba` 收的是鸿蒙平台事实（M2 的 `ohos.permission.INTERNET` 与白屏、M3 的
-  `javaScriptOnDocumentStart` 时序与 `renderMode`、M4 的 `setRenderProcessMode` 与 `renderExitReason`、
-  M5 的 `setWebDebuggingAccess`）；`e857625` 答掉的是鸿蒙 `bundleName` 的字符规则与「AGC 建了就不可改」，
-  M1 的待核实从三条减到一条（只剩 iOS bundle id 收不收下划线）。**没有一条改动 Android 的判据、取值、
-  slug 或落点**，所以下面各节不动
+- commit `287c92d`（「收 and 调试成果：四条平台事实进 M3/M4、进度快照重生、交接文件暂存、README 加
+  「页面侧继承到什么」」），pro 工作区干净，本清单按的就是这份提交
+- 上一版按的是 `e857625`。`e857625..287c92d` 一个提交逐行读过（6 个文件，+201/−7），**动到 Android 的
+  有三处**，都不改判据本身、只把要求写细：
+  - M3「要试出来的」那格加了一句：`DOCUMENT_START_SCRIPT` 要连 `WebViewCompat.getCurrentWebViewPackage()`
+    的内核版本一起打，且**明写「`inject-order` 绿不算这一格的答案」**——两条路都要求 `injected == 1`，
+    绿了认不出走的是原生注入还是兜底。落到本端就是下面「M3 · 注入走哪条路」那一格
+  - M4「能不能主动触发一次渲染进程终止」那格加了前提：带 Google Play 的镜像一律拒绝 `adb root`，
+    拒绝了这条在 Android 上整条不成立，退代码走查并在 M5 明写未验证
+  - M4「三端从命令行回读应用日志的路」那格记上 **Android 已成立**，靠日志判的那五条不退 `MANUAL`
+- 另外三处与本端判据无关：README 新增「页面侧继承到什么」（给 FE 的索引，本端不实现）、`开工.md` 加了
+  「pro 根上的 `交接-<代号>.md` 搬完即删」的规矩（本次照办，见下）、`进度.md` 是快照
+- **`e857625..287c92d` 收进 pro 的四条 Android 平台事实全部产自本端**（UA 缩减、`data:` iframe 起得来、
+  两个 file URL setter 已废弃、Google Play 镜像不可 root）。剩下还压在本仓等回流的见
+  [`docs/待回流-pro.md`](docs/待回流-pro.md)
+- pro 上还多了一个 `723e15a`，**只删掉了根上的 `交接-and.md`**（那份中转的三块内容已经搬进本仓，见下面
+  运行记录与 `docs/PITFALLS.md`）。它一个判据都没动，所以本清单仍按 `287c92d` 读
+
+## 运行记录 · 十六行第一遍（2026-09-21）
+
+`scripts/probe.sh` 的输出，**退出码 0**：
+
+```
+origin PASS
+storage PASS
+subresource PASS
+intercept PASS
+escape PASS
+escape-encoded PASS
+inject-order PASS
+inject-scope PASS
+nav-same-origin PASS
+nav-back PASS
+nav-cross-origin PASS
+nav-blank PASS
+nav-system-scheme MANUAL
+nav-unknown-scheme PASS
+dialog PASS
+permission PASS
+```
+
+跑的时候是什么条件：
+
+| 什么 | 值 |
+| --- | --- |
+| 工程 | 工作机的本仓检出，HEAD `8e4f40b`，与 `origin/main` 同点 |
+| 容器 | `emulator-5554`，`ro.build.version.sdk` = 37 |
+| WebView 内核 | Chrome/145（从探针页打出来的 UA 读到） |
+| 装之前 | `./scripts/check.sh` 绿 |
+| 这一遍的跑法 | `--no-install`，人工八个按钮 / 三个对话框 / 一次系统返回键先做完再回车 |
+
+`nav-system-scheme` 那条 `MANUAL` 按 pro 的规约另附一行人工观察结果：
+
+> **`tel:` 跳出了模拟器里的拨号，`mailto:` 跳出了邮件。两次都交给了系统。** 观察时间 2026-09-21，
+> 与上面那十六行是同一遍。
+
+**这一遍跑在工作机上，不是跑在本机。** 两台机器的差别见
+[`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」一节：本机没有 `cmdline-tools` / system-image / AVD，
+`probe.sh` 在本机起不来，所以本机的 AI 会话只能跑编译、单测、静态检查那三样。
+
+**十六行不覆盖的还有六格**，一条都没跑过，逐格记在下面各节：
+
+| 还欠什么 | 记在哪一节 |
+| --- | --- |
+| `DOCUMENT_START_SCRIPT` 的取值（注入走原生还是兜底） | M3 · 注入走哪条路 |
+| 切后台 / 最近任务划掉 / 入口页直接后退 | M4 · 三格 |
+| 渲染进程终止两次 | M4 · 那一格 |
+| 入口文件挪走看错误态 | M4 · 那一格 |
+| 加载后生效差异表 Android 那一列 | M5 · 差异表 |
+| 文字跟不跟随系统字号 | M3 · 缩放那一行 |
 
 ## 状态记号
 
 | 记号 | 意思 |
 | --- | --- |
 | 已落地 | 代码在，`./scripts/check.sh` 绿（判定逻辑有单测） |
-| 待模拟器核实 | 代码在，但判据只能在模拟器上看。本机无 `cmdline-tools`、无 API 37 镜像、无 AVD，**一条也没核过** |
+| 已核实 | 在 API 37 模拟器上观察过一次，出处是上面那十六行或另附的人工结果 |
+| 待模拟器核实 | 代码在，但判据只能在模拟器上看，**十六行不覆盖它**。上面那张「还欠什么」表就是这些格 |
 | 只剩走查 | pro 明写在容器阶段没有观察面，M5 里要照实写「未验证」 |
 
-**不要把「已落地」读成「过了」。** 十六条断言一条都还没在真容器里跑过。
+**「已落地」仍然不等于「过了」，「已核实」才是。** 十六条已经在真容器里跑过一遍，但它们只覆盖十六条；
+上面那六格一条没跑，别拿退出码 0 当整个 M2–M4 都过了。
 
 ## M1 · 装到模拟器
 
@@ -33,7 +96,10 @@ API、动哪个文件、哪条单测、现在是什么状态。
 | 标识 `net.xiaoluzhu.crab` | `app/build.gradle.kts` 的 `namespace` 与 `applicationId` | 已落地 |
 | 应用名 Crab / 螃蟹 | `values/strings.xml` + `values-zh/strings.xml` | 已落地 |
 | `minSdk = 37` | `gradle/libs.versions.toml` | 已落地 |
-| 装得上、屏幕上有一个原生页面 | `MainActivity`（M1 不碰 WebView） | 待模拟器核实 |
+| 装得上、屏幕上有一个原生页面 | `MainActivity`（M1 不碰 WebView） | 已核实 |
+
+「装得上、起得来」是十六行那一遍顺带核掉的：`:app:installDebug` 成功、应用起来、探针页十六条都判了出来。
+**M1 当时那个「纯原生页面」形态已经不存在了**——M2 起 `MainActivity` 就挂上了容器，核到的是现在这个形态。
 
 M1 还有三件一次性动作（pro 的「动工之前」，顺序不能颠倒），都已经做完：
 
@@ -49,20 +115,20 @@ M1 还有三件一次性动作（pro 的「动工之前」，顺序不能颠倒�
 
 十六条断言里 M2 占前六条（`origin` / `storage` / `subresource` / `intercept` / `escape` /
 `escape-encoded`）。它们全部由探针页自己判，结果经 `console.log` → `onConsoleMessage` → logcat →
-`scripts/probe.sh` 回读。**六条一条都还没在真容器里跑过。**
+`scripts/probe.sh` 回读。**六条都在真容器里跑过一遍了，全 PASS**（出处见上面那节运行记录）。
 
 | 判据 | 本端落点 | 状态 |
 | --- | --- | --- |
-| 页面从 assets 起来，`location.origin` 是约定的承载 origin | `HostingOrigin` + `CrabContainer` 的 `WebViewAssetLoader`（`setDomain` / `setHttpAllowed(false)`） | 待模拟器核实 |
-| 同目录子资源（`.js` / `.png`）加载成功 | `assets/probe/probe.js` · `probe.png`，走同一个 `PathHandler` | 待模拟器核实 |
-| `localStorage` 可读可写 | `settings.domStorageEnabled = true`（M2 先借这一项） | 待模拟器核实 |
-| 承载目录里不存在的路径 → 容器自己回 404 + `INTERCEPTED` | `CrabAssetPathHandler`（未命中不返回 null） | 待模拟器核实 |
-| 明文穿越 `../` 读不到承载目录外的文件 | `AssetRouting.resolve` 判 `OutOfBounds`；`AssetRoutingTest` | 已落地 |
-| 编码穿越 `%2e%2e%2f`（含双重编码）同样读不到 | 同上，先解码再判；`AssetRoutingTest` | 已落地 |
+| 页面从 assets 起来，`location.origin` 是约定的承载 origin | `HostingOrigin` + `CrabContainer` 的 `WebViewAssetLoader`（`setDomain` / `setHttpAllowed(false)`） | 已核实（`origin` PASS） |
+| 同目录子资源（`.js` / `.png`）加载成功 | `assets/probe/probe.js` · `probe.png`，走同一个 `PathHandler` | 已核实（`subresource` PASS） |
+| `localStorage` 可读可写 | `settings.domStorageEnabled = true`（M2 先借这一项） | 已核实（`storage` PASS） |
+| 承载目录里不存在的路径 → 容器自己回 404 + `INTERCEPTED` | `CrabAssetPathHandler`（未命中不返回 null） | 已核实（`intercept` PASS） |
+| 明文穿越 `../` 读不到承载目录外的文件 | `AssetRouting.resolve` 判 `OutOfBounds`；`AssetRoutingTest` | 已落地 + 已核实（`escape` PASS） |
+| 编码穿越 `%2e%2e%2f`（含双重编码）同样读不到 | 同上，先解码再判；`AssetRoutingTest` | 已落地 + 已核实（`escape-encoded` PASS） |
 | 承载 origin 单点定义要有**一条可执行检查** | `HostingOriginSingleDefinitionTest` 扫源码树（定义处 + 探针页期望值，第三处即红） | 已落地 |
 | 探针页 / `probe.sh` / slug 清单三者对齐 | `ProbeContractAlignmentTest`（`.html` / `.js` / `.sh` 没有别的兜底） | 已落地 |
 | 越界素材真实存在（否则 `escape` 测不到东西） | `assets/outside/out-of-bounds.txt`，内容 `OUT_OF_BOUNDS` | 已落地 |
-| Safe Browsing 关掉（Android 独有，pro 要求显式设置 + 取值进单测） | `WebSettingsSpec.SAFE_BROWSING_ENABLED = false`（`WebSettingsSpecTest`）→ `applyCrabSpec` 里 `safeBrowsingEnabled =` | 取值已落地 / 写入待模拟器核实 |
+| Safe Browsing 关掉（Android 独有，pro 要求显式设置 + 取值进单测） | `WebSettingsSpec.SAFE_BROWSING_ENABLED = false`（`WebSettingsSpecTest`）→ `applyCrabSpec` 里 `safeBrowsingEnabled =` | 取值已落地 / 写入只剩走查 |
 
 **pro 那条「关 Safe Browsing 的正确手段待核」已经能答掉**，判据是本机 SDK 与 aar，不用模拟器：
 
@@ -77,8 +143,14 @@ M1 还有三件一次性动作（pro 的「动工之前」，顺序不能颠倒�
   而 `developer.android.com` 在本环境连不上。它还是**应用级**开关、没有可进单测的取值，与 pro 要的
   「显式设置、取值进单测」不同形状。**不取它**，这一格记「未核，且不需要」
 
-`scripts/probe.sh` 已就位并输出全部十六行，但 M2 只实现了前六条对应的页面侧判定，其余九条在 M3/M4
-补上之前一律打 FAIL（`nav-system-scheme` 恒为 MANUAL）。**这不是「跑失败了」，是「还没实现」。**
+`safeBrowsingEnabled = false` 这一行**没有观察面**：Safe Browsing 要拦下来才看得见，而承载 origin 落在
+`.invalid` 下、容器一条真实网络请求都不发，拦不到东西。所以它与 SSL 那条同类，M5 里按走查记。
+上面这四条是平台事实，攒在 [`docs/待回流-pro.md`](docs/待回流-pro.md) 等着回流，**本仓不动 pro 的
+`plan/`**。
+
+`scripts/probe.sh` 输出的十六行里，前六行就是这一节。**别把「六行 PASS」读成「M2 过了」**：pro 的 M2
+还要求承载 origin 上不发真实网络请求，那一条在本端的形状是「拦截点未命中也自己回 404」，已经由
+`intercept` 那条覆盖；而 Safe Browsing 与 SSL 两条属走查。
 
 ## M3 · 配置、注入与 UA
 
@@ -88,27 +160,64 @@ M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六�
 
 | 判据 | 本端落点 | 状态 |
 | --- | --- | --- |
-| 六项配置按取值表落地 | `WebSettingsSpec`（取值，`WebSettingsSpecTest`）→ `applyCrabSpec`（写入） | 取值已落地 / 写入待模拟器核实 |
-| 混合内容 `NEVER_ALLOW` | `MixedContentPolicy` → `WebSettings.MIXED_CONTENT_NEVER_ALLOW`（常量值 0/2/1 由 javap 核过） | 取值已落地 / 写入待模拟器核实 |
-| 文件与内容访问四项全关 | 同上四个字段 | 取值已落地 / 写入待模拟器核实 |
-| 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实 |
-| 多窗口 / 脚本开窗 / 定位**显式开** | 三项 true，为的是 M4 的回调能被调用后当场拒绝并留日志 | 取值已落地 |
-| UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 / 生效值待模拟器核实 |
-| 页面开口之前注入，`inject-order` 成立 | `DocumentStartScript.source` + `WebViewCompat.addDocumentStartJavaScript`；入口页首行 `<script>` 记快照 | 待模拟器核实 |
-| 不支持时走兜底，且**两条路不叠加** | `CrabContainer.documentStartScriptSupported` 一个布尔决定；兜底是 `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML | 待模拟器核实 |
-| 注入范围不漏到别的 origin（`inject-scope`） | `HostingOrigin.allowedOriginRules`；页面用 `data:` iframe 经 `postMessage` 自报 | 待模拟器核实 |
+| 六项配置按取值表落地 | `WebSettingsSpec`（取值，`WebSettingsSpecTest`）→ `applyCrabSpec`（写入） | 取值已落地 / 写入逐项见下 |
+| JavaScript 与 DOM storage 开 | 同上两个字段 | 已核实（探针页本身跑起来了 + `storage` PASS） |
+| 混合内容 `NEVER_ALLOW` | `MixedContentPolicy` → `WebSettings.MIXED_CONTENT_NEVER_ALLOW`（常量值 0/2/1 由 javap 核过） | 取值已落地 / 写入**十六行不覆盖**（探针页没有 http 子资源，见差异表那节） |
+| 文件与内容访问四项全关 | 同上四个字段 | 取值已落地 / 写入**十六行不覆盖**（探针页没有 `file://` 请求） |
+| 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实（六格之一） |
+| 多窗口 / 脚本开窗 / 定位**显式开** | 三项 true，为的是 M4 的回调能被调用后当场拒绝并留日志 | 已核实（`nav-blank` 与 `permission` 都 PASS——回调被调用了才有那几行日志） |
+| UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 / 生效值**只读到一半**（见下） |
+| 页面开口之前注入，`inject-order` 成立 | `DocumentStartScript.source` + `WebViewCompat.addDocumentStartJavaScript`；入口页首行 `<script>` 记快照 | 已核实（`inject-order` PASS） |
+| 不支持时走兜底，且**两条路不叠加** | `CrabContainer.documentStartScriptSupported` 一个布尔决定；兜底是 `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML | 不叠加已核实（`injected == 1`）/ **走的是哪条不知道**，见下一节 |
+| 注入范围不漏到别的 origin（`inject-scope`） | `HostingOrigin.allowedOriginRules`；页面用 `data:` iframe 经 `postMessage` 自报 | 已核实（`inject-scope` PASS，**只覆盖帧那一面**）|
 | 脚本重复注入看得出来 | 脚本用 `window.__CRAB__ ||` 初始化、`injected` 只增不减；`DocumentStartScriptTest` 盯着源码里这两条 | 已落地 |
 | 兜底只改 HTML、不碰素材 | `DocumentStartScript.appliesTo`（`DocumentStartScriptTest`） | 已落地 |
 | 承载 origin 的 Cookie 不与原生共享 | 落点是**什么都不做**：容器没有网络层（Retrofit / OkHttp 已砍），`CookieManager` 一次也没碰，没有可共享的对方 | 只剩走查 |
 | storage 跨启动存活，容器不主动清空 | 同样是**什么都不做**：全仓没有 `clearCache` / `WebStorage` / `removeAllCookies` 的调用 | 只剩走查 / 跨启动存活待模拟器核实 |
-| 加载后生效差异表（七行） | 探针页 `CRAB-ENV` 一行打 UA 与 `typeof localStorage` | 待模拟器核实 |
+| 加载后生效差异表（七行） | 探针页 `CRAB-ENV` 一行打 UA 与 `typeof localStorage` | 待模拟器核实（七格全空，见 M5 那节） |
 
-**M3 留给模拟器的三个未知**，结果会反过来影响判据：
+**UA 那一格只读到一半，照实记。** 那一遍从探针页打出来的 UA 里读到了 `Chrome/145`（内核大版本就是这么
+拿到的），但**整串 UA 没有被抄下来**，所以「尾巴是不是 `Crab/0.1.0`、系统 UA 有没有被替换」这两问还没有
+证据。下次开机回读一次即可：
 
-1. `DOCUMENT_START_SCRIPT` 在目标镜像的内核上支不支持——决定走注入还是兜底，两条路的表现应当一致
-2. `data:` URL 的 iframe 加不加载得起来。加载不起来时 `inject-scope` 会因超时打 FAIL，细节里写着
-   「可能需要换 sandbox+srcdoc 退路」。**换退路要三端一起换，得回 pro 议，端内不自决**
-3. 文字大小跟不跟随系统字号（`textZoom = 100` 是否真的挡住了系统字号）
+```bash
+adb logcat -d | grep 'CRAB-ENV'
+```
+
+`UserAgent.decorate` 的拼接形状有 `UserAgentTest` 盯着，缺的只是「生效值确实长这样」这一次观察。
+差异表的 UA 那一行、M5 三端并排比 UA 也都要这一串。
+
+### M3 · 注入走哪条路（六格之一，代码已就位、值还没读）
+
+pro 的 M3「要试出来的」明写这一格**不能拿 `inject-order` 绿当答案**：原生注入与兜底都要求
+`injected == 1`，那是设计意图（两条叠加就是 bug），所以绿了认不出走的是哪条。支持与否只能另打一次。
+
+落点是 `CrabContainer` 里那个 `init` 块，开机就打一行：
+
+```
+CRAB-ENV DOCUMENT_START_SCRIPT=<true|false> webview=<包名>/<完整版本号>
+```
+
+前缀刻意写成字面量、不从 `CrabLog` 或 `ProbeContract` 派生——那两处是契约、有单测盯着、`probe.sh` 靠它们
+回读；这一行只是一次性诊断，读到之后删掉它不该牵动契约。
+
+回读：`adb logcat -d | grep 'CRAB-ENV DOCUMENT_START_SCRIPT'`。**两种结果各有一笔后账，别当读到值就完了：**
+
+| 读到 | 意味着 | 那么欠什么 |
+| --- | --- | --- |
+| `true` | 这台机器一直走 `addDocumentStartJavaScript`，**兜底那条一次没跑过** | `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML 那条路没有观察面。要么找一个旧内核的镜像，要么在 M5 里按未验证写 |
+| `false` | 这台机器一直走兜底，**原生那条没有观察面** | 反过来同理；且要确认 `inject-order` 的 PASS 是兜底挣来的 |
+
+**现在这一格是空的**：本机没有模拟器（见 [`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」），代码进了仓
+但那一行日志还没有人读过。`./scripts/check.sh` 绿只说明它编得过。
+
+**M3 留给模拟器的两个未知**（原先三个，`data:` iframe 那条已经答掉）：
+
+1. 文字大小跟不跟随系统字号（`textZoom = 100` 是否真的挡住了系统字号）
+2. 混合内容、`file://`、`<video autoplay>` 三项配置的生效情况——探针页里根本没有这三样，属差异表那一摊
+
+`data:` URL 的 iframe **在 Android 上起得来**（`inject-scope` PASS 就是它挣来的），所以「换
+`sandbox` + `srcdoc` 退路」这件事在 Android 侧不必发生。这条已作为平台事实回流 pro。
 
 **关掉缩放欠下的那笔债，本端认领不了，但记在这里。** pro 要求关缩放的同时由**页面侧提供字号调节**
 （双指缩放是低视力用户放大内容的唯一手段，`textZoom = 100` 又把系统字号那条路一并按住了）。容器这一层
@@ -127,22 +236,26 @@ M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin
 
 | 判据 | 本端落点 | 状态 |
 | --- | --- | --- |
-| 同 origin 跳转放行 | `NavigationGate.decide` → `Allow`；`NavigationGateTest` | 已落地 |
-| 返回键回上一页，到底交回宿主 | `MainActivity.backCallback`（`canGoBack()` → `goBack()`，否则 `remove()` 后重新分发） | 待模拟器核实 |
-| 跨 origin 拦下 + 一行 `CRAB-NAV nav-cross-origin`，**不交系统浏览器** | `NavigationGate` → `Deny`；`ContainerCoordinatorTest` 断言 `openInSystem` 没被调 | 已落地 |
+| 同 origin 跳转放行 | `NavigationGate.decide` → `Allow`；`NavigationGateTest` | 已落地 + 已核实（`nav-same-origin` PASS） |
+| 返回键回上一页，到底交回宿主 | `MainActivity.backCallback`（`canGoBack()` → `goBack()`，否则 `remove()` 后重新分发） | 回上一页已核实（`nav-back` PASS）/ **到底交回宿主待核实**（六格之一） |
+| 跨 origin 拦下 + 一行 `CRAB-NAV nav-cross-origin`，**不交系统浏览器** | `NavigationGate` → `Deny`；`ContainerCoordinatorTest` 断言 `openInSystem` 没被调 | 已落地 + 已核实（`nav-cross-origin` PASS） |
 | 看起来像子域的 `…invalid.evil.com` 判为跨 origin | `HostingOrigin.isHostingOrigin` 比 host 全等，不做前缀匹配；`NavigationGateTest` | 已落地 |
-| `_blank` 与 `window.open` 各留一行 `nav-blank` | `onCreateWindow` → `onWindowOpenRequest`（返回 false = 不开窗）；`probe.sh` 要求这行 **≥2 条** | 已落地 / 行数待模拟器核实 |
-| `tel:` / `mailto:` 交系统 + 一行 `nav-system-scheme` | `NavigationGate` → `HandOffToSystem`；`AndroidActions.openInSystem` 起 `ACTION_VIEW` | 已落地 / 拨号盘邮件是否真起来待核实 |
-| 未知 scheme 拦下 + 一行，**且进程还活着** | 同 `Deny` 一条路；`probe.sh` 额外查 `pidof net.xiaoluzhu.crab` | 已落地 / 进程存活待模拟器核实 |
-| 三种对话框各一行 `CRAB-DLG`，`JsResult` **必须回一次** | `CrabWebChromeClient` 三个 `onJs*`，回值在 `setOnDismissListener` 里统一给（关按钮、点外面也算） | 已落地 / 弹窗与恢复执行待模拟器核实 |
-| 权限一律拒绝 + 每项一行 `CRAB-PERM` | `onPermissionRequest`（`deny()`）与 `onGeolocationPermissionsShowPrompt`（`invoke(origin, false, false)`）两处都接 | 已落地 / 定位那条待模拟器核实 |
-| 主文档加载失败进错误态 + `CRAB-ERR load <码>` | `ContainerStateMachine` 过滤子帧；`onReceivedError` 与 `onReceivedHttpError` 都转 | 已落地 / 删入口文件那一遍待模拟器核实 |
-| 错误界面文案「页面没能打开」+「重试」按钮 | `MainActivity.ErrorScreen` + `values/strings.xml`（场景与错误码只进 logcat，不上屏） | 已落地 / 上屏待模拟器核实 |
-| 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / 造得出来才算核实 |
+| `_blank` 与 `window.open` 各留一行 `nav-blank` | `onCreateWindow` → `onWindowOpenRequest`（返回 false = 不开窗）；`probe.sh` 要求这行 **≥2 条** | 已落地 + 已核实（`nav-blank` PASS，即 ≥2 行确实出来了） |
+| `tel:` / `mailto:` 交系统 + 一行 `nav-system-scheme` | `NavigationGate` → `HandOffToSystem`；`AndroidActions.openInSystem` 起 `ACTION_VIEW` | 已落地 + 已核实（`MANUAL` + 人工观察：拨号盘与邮件都跳出来了，见运行记录那节） |
+| 未知 scheme 拦下 + 一行，**且进程还活着** | 同 `Deny` 一条路；`probe.sh` 额外查 `pidof net.xiaoluzhu.crab` | 已落地 + 已核实（`nav-unknown-scheme` PASS，`pidof` 是脚本自己查的） |
+| 三种对话框各一行 `CRAB-DLG`，`JsResult` **必须回一次** | `CrabWebChromeClient` 三个 `onJs*`，回值在 `setOnDismissListener` 里统一给（关按钮、点外面也算） | 已落地 + 已核实（`dialog` PASS：三个原生框都弹了出来、页面三个答案都收到了） |
+| 权限一律拒绝 + 每项一行 `CRAB-PERM` | `onPermissionRequest`（`deny()`）与 `onGeolocationPermissionsShowPrompt`（`invoke(origin, false, false)`）两处都接 | 已落地 / 定位那条已核实（`permission` PASS）/ 相机麦克风只剩走查 |
+| 主文档加载失败进错误态 + `CRAB-ERR load <码>` | `ContainerStateMachine` 过滤子帧；`onReceivedError` 与 `onReceivedHttpError` 都转 | 已落地 / **删入口文件那一遍待核实**（六格之一） |
+| 错误界面文案「页面没能打开」+「重试」按钮 | `MainActivity.ErrorScreen` + `values/strings.xml`（场景与错误码只进 logcat，不上屏） | 已落地 / **上屏待核实**（与上一格同一遍） |
+| 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / **待核实，且可能整条不成立**（六格之一，见下） |
 | 重试回 Loading、重新加载、额度给满 | `ContainerCoordinator.onRetry`；`ContainerCoordinatorTest` | 已落地 |
 | SSL 错误只 `cancel()`，一次也不许 `proceed()` | `CrabWebViewClient.onReceivedSslError` | 已落地 / **这条路没有观察面**（见下） |
-| 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | 待模拟器核实 |
-| 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | 待模拟器核实 |
+| 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | **待核实**（六格之一） |
+| 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | **待核实**（六格之一，最近任务划掉那一遍） |
+
+**这十六行覆盖到的与没覆盖到的，界线就在「有没有按钮」。** 十六条断言全是探针页上的按钮 + logcat 回读，
+所以导航、对话框、权限那九格一遍跑完；而「切后台」「最近任务划掉」「在入口页直接后退」「删掉入口文件」
+「杀渲染进程」这五件事探针页上没有按钮，得按 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 另外走，一次都还没走。
 
 ### M4 留下的四处不确定，照实记
 
@@ -151,7 +264,9 @@ M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin
    `.invalid` 下、解析就会失败，轮不到证书校验，**所以这条路本身造不出来**：真收到一次说明有请求漏到了
    网上，那是 M2「承载 origin 上不发真实网络请求」被破的证据
 2. **渲染进程终止造不造得出来未知。** 取法写在 `docs/RUNBOOK.md`（`adb root` + `kill -9` 渲染进程）。
-   `adb root` 在 Google Play 镜像上不可用，那种镜像上这一格只能空着
+   顺序是先 `adb root`：拿不到就整条不成立（带 Google Play 的镜像一律拒绝，这条已回流 pro 的 M4），
+   退代码走查、在 M5 里明写「该端该条未验证」。**「跑了一整天没崩过」不是通过**——没触发过的恢复路径
+   与写错了的恢复路径在日志上长得一模一样
 3. **相机与麦克风只剩走查。** pro 明写探针页只按定位这一条。代码上 `onPermissionRequest` 对
    `request.resources` 里的每一项都打一行再整体 `deny()`，与定位走的是同一条路，但**没有观察面**，
    M5 里按未验证写
@@ -191,27 +306,29 @@ pro 的 M5 是三端汇合，**汇合本身不在本仓**（贴到 pro 的 issue
 
 ### 十六条断言逐项状态
 
-顺序即 `ProbeContract.SLUGS`，也是 `scripts/probe.sh` 的输出顺序。**「判定已落地」不等于「过了」**：
-判定指页面侧或容器侧的判据已经写好且有自动化兜底，`PASS` / `FAIL` 一格都还没在真容器上产生过。
+顺序即 `ProbeContract.SLUGS`，也是 `scripts/probe.sh` 的输出顺序。这一列是 2026-09-21 那一遍的结果，
+**结果的出处只有一个**：上面那节运行记录。重跑一遍就整列覆盖，不在这里攒历史。
 
-| # | slug | 判在哪 | 状态 |
+| # | slug | 判在哪 | 2026-09-21 |
 | --- | --- | --- | --- |
-| 1 | `origin` | 页面比 `location.origin` | 判定已落地 / 待模拟器核实 |
-| 2 | `storage` | 页面读写 `localStorage` | 判定已落地 / 待模拟器核实 |
-| 3 | `subresource` | 页面看 `.js` 在跑、`.png` 的 `naturalWidth` | 判定已落地 / 待模拟器核实 |
-| 4 | `intercept` | 页面 `fetch` 不存在的路径，要 404 + `INTERCEPTED` | 判定已落地 / 待模拟器核实 |
-| 5 | `escape` | 页面 `fetch ../outside/…`，读到 `OUT_OF_BOUNDS` 即 FAIL | 判定已落地（`AssetRoutingTest` 覆盖同一判据）/ 待模拟器核实 |
-| 6 | `escape-encoded` | 同上，`%2e%2e%2f` 与双重编码 | 判定已落地（同上）/ 待模拟器核实 |
-| 7 | `inject-order` | 入口页首行脚本记的快照 | 判定已落地 / 待模拟器核实 |
-| 8 | `inject-scope` | `data:` iframe 经 `postMessage` 自报 | 判定已落地 / 待模拟器核实，**且只覆盖帧那一面**（见下） |
-| 9 | `nav-same-origin` | 第二页留的 `sessionStorage` 标记 | 判定已落地 / 待人工走一遍 |
-| 10 | `nav-back` | 同一个标记 + 当前在入口页 | 判定已落地 / 待人工走一遍 |
-| 11 | `nav-cross-origin` | logcat 的 `CRAB-NAV nav-cross-origin` | 判定已落地 / 待人工走一遍 |
-| 12 | `nav-blank` | 同上，**要 ≥2 行**（用户点的与脚本发的各一条） | 判定已落地 / 待人工走一遍 |
-| 13 | `nav-system-scheme` | 跳没跳出拨号盘只有人眼看得见 | **恒为 MANUAL**（pro 已定，不是没测） |
-| 14 | `nav-unknown-scheme` | 那行日志 + `pidof` 进程还在 | 判定已落地 / 待人工走一遍 |
-| 15 | `dialog` | 页面读到三种答案 + logcat 三行 `CRAB-DLG` | 判定已落地 / 待人工走一遍 |
-| 16 | `permission` | 页面拿到失败回调 + 一行 `CRAB-PERM` | 判定已落地 / 待人工走一遍 |
+| 1 | `origin` | 页面比 `location.origin` | PASS |
+| 2 | `storage` | 页面读写 `localStorage` | PASS |
+| 3 | `subresource` | 页面看 `.js` 在跑、`.png` 的 `naturalWidth` | PASS |
+| 4 | `intercept` | 页面 `fetch` 不存在的路径，要 404 + `INTERCEPTED` | PASS |
+| 5 | `escape` | 页面 `fetch ../outside/…`，读到 `OUT_OF_BOUNDS` 即 FAIL | PASS（`AssetRoutingTest` 覆盖同一判据） |
+| 6 | `escape-encoded` | 同上，`%2e%2e%2f` 与双重编码 | PASS（同上） |
+| 7 | `inject-order` | 入口页首行脚本记的快照 | PASS，**但认不出走的是原生还是兜底**（见 M3 那一节） |
+| 8 | `inject-scope` | `data:` iframe 经 `postMessage` 自报 | PASS，**只覆盖帧那一面**（见下） |
+| 9 | `nav-same-origin` | 第二页留的 `sessionStorage` 标记 | PASS |
+| 10 | `nav-back` | 同一个标记 + 当前在入口页 | PASS（**入口页上再退一次**那半没覆盖） |
+| 11 | `nav-cross-origin` | logcat 的 `CRAB-NAV nav-cross-origin` | PASS |
+| 12 | `nav-blank` | 同上，**要 ≥2 行**（用户点的与脚本发的各一条） | PASS |
+| 13 | `nav-system-scheme` | 跳没跳出拨号盘只有人眼看得见 | **MANUAL**（pro 已定，不是没测）+ 人工结果：拨号与邮件都跳出来了 |
+| 14 | `nav-unknown-scheme` | 那行日志 + `pidof` 进程还在 | PASS |
+| 15 | `dialog` | 页面读到三种答案 + logcat 三行 `CRAB-DLG` | PASS |
+| 16 | `permission` | 页面拿到失败回调 + 一行 `CRAB-PERM` | PASS |
+
+退出码 0。**十六格齐了不等于 M2–M4 过了**，差的六格在本文件开头那张「还欠什么」表里。
 
 ### 加载后生效差异表 · Android 那一列
 
@@ -221,6 +338,7 @@ pro 的做法是两个实例：A 加载前设成目标值当基线，B 加载前
 **本仓没有留这条路**：`CrabWebSettings.applyCrabSpec` 在 `createWebView()` 里一次写完，容器不提供
 「加载后再改一项」的入口——那正是 pro「六项全部在首次加载之前落定」要求的形状。所以这七格要填，得临时
 造一个实例 B（在 `MainActivity` 里加一段临时代码，跑完删掉），不是跑一遍 `probe.sh` 就能得到的。
+步骤写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「七」。
 
 | 项 | Android | 怎么观察（pro 定的） |
 | --- | --- | --- |
@@ -232,23 +350,26 @@ pro 的做法是两个实例：A 加载前设成目标值当基线，B 加载前
 | 缩放 | 未填 | 双指手势人工看；顺带把系统字号调大一档，看文字变不变 |
 | UA | 未填 | `navigator.userAgent` 打印出来（探针页的 `CRAB-ENV` 那行已经在打） |
 
-**七格全空，写「未填」而不是「不生效」。** 探针页现在只有 UA 与 `typeof localStorage` 两项在打，混合
-内容、`file://`、`<video autoplay>` 三样探针页里根本没有——差异表要的东西比十六条断言多，这一点别混。
+**七格全空，写「未填」而不是「不生效」。** 十六行那一遍跑的是实例 A 的基线形态，一格也没喂进这张表：
+探针页只有 UA 与 `typeof localStorage` 两项在打（UA 那串还没抄下来），混合内容、`file://`、
+`<video autoplay>` 三样探针页里根本没有。**差异表要的东西比十六条断言多，这一点别混。**
 
 ### 五处不许糊过去 · 本端结论
 
 pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（**不因为只是一半就省掉**）：
 
-1. **渲染进程终止：待核实，可能只剩走查。** 取法在 `docs/RUNBOOK.md`（`adb root` + `kill -9`）。
-   `adb root` 在 Google Play 镜像上不可用，那种镜像上这条只能写「该端该条未验证」，不当成通过的例外
+1. **渲染进程终止：未验证。** 取法在 `docs/RUNBOOK.md`（`adb root` + `kill -9`）。先看 `adb root` 拿不拿
+   得到：拿不到（带 Google Play 的镜像一律拒绝）这条在 Android 上整条不成立，写「该端该条未验证」，
+   不当成通过的例外。**不许拿「一直没崩过」顶上去**
 2. **注入范围的主帧那一面：只剩走查。** `inject-scope` 判的是帧这一面（`data:` iframe 里没有
-   `__CRAB__`）。「跨 origin 的主文档里注入没漏」这一支在容器阶段**没有观察面**——跨 origin 的主文档
-   一律被闸门拦下、根本不在这个 WebView 里打开。Android 侧的 origin 限定落在
+   `__CRAB__`，2026-09-21 PASS）。「跨 origin 的主文档里注入没漏」这一支在容器阶段**没有观察面**——跨
+   origin 的主文档一律被闸门拦下、根本不在这个 WebView 里打开。Android 侧的 origin 限定落在
    `HostingOrigin.allowedOriginRules`（`addDocumentStartJavaScript` 的第三个参数），只有走查
 3. **`WebSettings` 取值只剩观察一种手段：已按 pro 要的形状拆开。** 取值在 `WebSettingsSpec`（纯 JVM、
    有 `WebSettingsSpecTest`），写入在 `CrabWebSettings.applyCrabSpec`（只有直线赋值、无分支）。
-   「拆没拆、拆到什么程度」这次确认过：拆了，写入那几行仍然只能靠观察
-4. **相机与麦克风的拒绝：只剩走查。** 探针页只按定位那一条（pro 已定）。代码上
+   「拆没拆、拆到什么程度」这次确认过：拆了，写入那几行仍然只能靠观察，且六项里只观察到了两项
+   （JavaScript 与 DOM storage），另四项要靠差异表那一摊
+4. **相机与麦克风的拒绝：只剩走查。** 探针页只按定位那一条（pro 已定，2026-09-21 PASS）。代码上
    `onPermissionRequest` 对 `request.resources` 每一项打一行再整体 `deny()`，与定位走同一条路，
    但没有观察面，按未验证记
 5. 第五处是鸿蒙的，与本端无关
@@ -257,23 +378,27 @@ pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（
 
 | 交什么 | 从哪来 | 现在的形状 |
 | --- | --- | --- |
-| 十六条断言逐项结果 | `./scripts/probe.sh` 在 API 37 模拟器上的输出 | **还没有**（本机无 `cmdline-tools`、无镜像、无 AVD） |
-| 加载后生效差异表 Android 那一列 | 手工造实例 B | 七格全「未填」 |
-| 每条要求的核实记录 | 本文件 M1–M5 各节 | 已成形，状态记号见开头 |
+| 十六条断言逐项结果 | `./scripts/probe.sh` 在 API 37 模拟器上的输出 | **有了**：2026-09-21 那一遍，15 PASS + 1 MANUAL，退出码 0。原文在上面那节运行记录 |
+| 加载后生效差异表 Android 那一列 | 手工造实例 B | 七格全「未填」。要跑 `docs/RUNBOOK.md` 的「六」，本机跑不了 |
+| 每条要求的核实记录 | 本文件 M1–M5 各节 | 已成形，状态记号见开头。还欠六格 |
 
-不另设汇总表——本文件就是那份记录，pro 那边只收结果与平台事实。
+不另设汇总表——本文件就是那份记录，pro 那边只收结果与平台事实。等着回流 pro 的平台事实攒在
+[`docs/待回流-pro.md`](docs/待回流-pro.md)。
 
 ## 对账：欠着的几笔，照实记
 
 pro 的 `开工.md` 要求每个里程碑收尾把「怎么算过」那几格的结果贴到 pro 的 issue 上，运行记录留本仓。
-现在这几笔都还欠着，欠的原因都是同一个——**没有模拟器**：
+**M1 与十六行那一笔已经有了**（2026-09-21，在工作机上跑的），贴 issue 还欠着（`gh` 未登录）。
+剩下这几笔欠的原因是同一个——**这处检出没有模拟器**：
 
 | 欠什么 | 卡在哪 |
 | --- | --- |
-| M1 的「装得上、起得来」 | 需要 API 37 镜像与 AVD，本机连 `cmdline-tools` 都没有 |
-| M2–M4 的十六行输出 | 同上。代码与判定都在，`./scripts/probe.sh` 就位，一次也没跑过 |
-| 三端那条插队 spike：`data:` iframe 加不加载得起来 | pro 排的顺序是「M1 一过立刻插队、答案先回 pro 再往 M2 走」。本端答不了，所以**没等它**就把 M2–M4 一路写完了；`inject-scope` 的载体按「`data:` iframe 能用」写的，不能用时要换 `sandbox` + `srcdoc`，**换要三端一起换、回 pro 议** |
-| 平台事实回流 pro | 本次会话的边界是「pro 仓一个字不改」，三条残留事实已在会话里报给你，进不进 pro 由你定 |
+| 六格里的五格：切后台 / 最近任务划掉 / 入口页直接后退、删入口文件看错误态、渲染进程终止两次、系统字号、差异表 | 要 AVD。这处连 `cmdline-tools` 都没有；要打开这条路得在 SDK Manager 里装 `cmdline-tools` + 拉一个 API 37 的 system-image |
+| 六格里的第六格：`DOCUMENT_START_SCRIPT` 的取值 | 代码（`CrabContainer` 的 `init` 块）已经进仓且 `check.sh` 绿，缺的只是开机 `adb logcat -d \| grep CRAB-ENV` 一次 |
+| 整串 UA | 同上，同一行日志里就有 |
+| 结果贴到 pro 的 issue | `gh` 未登录；且工作机的 remote 是 HTTPS、GitHub 在那台上被 reset，推不上去。提交与推送只能从这处走 |
+| 平台事实回流 pro | 本次会话的边界仍是「pro 仓一个字不改」（唯一例外是搬完之后删掉 `交接-and.md`，那是 `开工.md` 定的规矩）。攒着的见 [`docs/待回流-pro.md`](docs/待回流-pro.md) |
 
-**没等 spike 就往下写，这件事本身要报上去。** 它不是偷跑：本端在拿到模拟器之前，任何一条断言的结果都
-产不出来，停下来等只是把同一件事往后挪。代价是 `inject-scope` 的载体可能要改一次。
+**那条插队 spike 现在有答案了：`data:` iframe 在 Android 上起得来**（`inject-scope` PASS 就是它挣来的），
+所以「换 `sandbox` + `srcdoc`」在 Android 侧不必发生。当初没等它就把 M2–M4 写完，事后看没有付出代价，
+但**那不改变当时的判断错在哪**：赌对了不等于该赌。这条已经回流 pro。

@@ -29,6 +29,14 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
   ```
 
 - **`buildFeatures.buildConfig` 在 AGP 9 默认 false。** 要 `BuildConfig.DEBUG` 得显式打开
+- **AGP 升级助手改的六个文件不是工作产物。** 它会动 `gradle.properties`、`gradle/libs.versions.toml`、
+  `gradle/wrapper/gradle-wrapper.jar`、`gradle-wrapper.properties`、`gradlew`、`gradlew.bat`，
+  `git stash -u` 停掉即可。**绿的组合是 AGP 9.2.1 + Gradle 9.4.1**，不要恢复那个 stash
+- **停掉之后 Studio 会报「built with AGP 9.2.1 but it is synced with 9.3.3」。** 那是它的同步模型旧了，
+  不是工程坏了：File → Sync Project with Gradle Files，升级横幅点掉
+- **ktlint 不许 KDoc 挂在 `init` 块上。** `standard:kdoc` 报
+  `A KDoc is not allowed inside 'class_initializer'`，而 `spotlessCheck` 是 `check.sh` 的第一步，直接红。
+  `init` 块上要写为什么就用 `//`；改成一个只为副作用而存在的 `private val ... : Unit` 属性是更坏的写法
 
 ## 假绿的边界
 
@@ -59,15 +67,43 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
 - `AndroidGradlePluginVersion` / `GradleDependency` / `NewerVersionAvailable` 三条已关：它们的结果取决于
   「今天 Maven 上有什么」，会让同一份代码今天绿明天黄。升级依赖是显式决定
 
+## 模拟器与 `probe.sh`
+
+- **不要用 Studio 的 Run 按钮装应用。** 它和 `probe.sh` 里的 `:app:installDebug` 会撞
+- **`probe.sh` 开头 `logcat -c` 清日志，所以每次重跑，八个按钮、三个对话框、那一次系统返回键都得从头
+  做一遍。** 不做就回车，红的正好是所有靠交互的 slug——第一次跑就是这样：8 PASS + 7 FAIL。
+  **那不是实现坏了**
+- **`dialog` 单独红那一次是三个对话框没答完**（alert 关掉、confirm 点确定、prompt 里输入 `CRAB`，
+  缺一不可）。先 `adb logcat -d | grep -E 'CRAB-DLG|CRAB-PROBE dialog'` 看清再说：日志缓冲此时还没被清掉，
+  不必重跑一整遍
+- **查 WebView 内核别用 `dumpsys webview`，没有这个服务**，服务名是 `webviewupdate`
+  （`adb shell cmd webviewupdate query`）。内核大版本也可以直接从探针页打出来的 UA 里读——`Chrome/145`
+  就是这么拿到的（UA 里的系统版本段是常量，读不到真实档位，见 pro 的 M3 平台事实）
+
 ## 环境
 
+**本仓有两处检出，能力不一样，别把一处的事实当成两处的：**
+
+| 检出 | 模拟器 | 推远端 |
+| --- | --- | --- |
+| 工作机 | **有** API 37 的 AVD（`emulator-5554`），十六行就是在这里跑的 | ✗ remote 是 HTTPS，GitHub 在那台上被 reset（`Recv failure: Connection reset by peer`，退出码 128） |
+| `~/Desktop/github` 下这处 | 无 `cmdline-tools` / 无 system-image / 无 AVD / 无真机 | ✓ remote 是 SSH，正常 |
+
+所以运行记录产在工作机、提交与推送落在这处；**这处的 AI 会话只跑得动编译、单测、静态检查那三样**。
+
 - **`java` 不在 PATH。** macOS 的 `/usr/bin/java` 只是存根：`command -v java` 会成功而 `java -version`
-  报错，所以探测要看退出码。用 Android Studio 自带 JBR 21
-  （`/Applications/Android Studio.app/Contents/jbr/Contents/Home`），由 `scripts/check.sh` 注入
-  `JAVA_HOME`。**不要写进 `gradle.properties`**——那是机器特定路径，换台机器就废
+  报错，所以探测要看退出码（注意别接管道——`java -version | head` 拿到的是 `head` 的退出码）。终端里
+  直接 `./gradlew` 报 `Unable to locate a Java Runtime`，而 Studio 的 Run 按钮照常能用，因为它走自带
+  JBR。要 `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`，
+  `scripts/check.sh` 已经替你注入。**不要写进 `gradle.properties`**——那是机器特定路径，换台机器就废
+- **JBR 的版本号随机器变，别拿它当事实。** 这处实测 OpenJDK 21.0.10，工作机实测 OpenJDK 25.0.3。
+  钉的是那个路径，不是版本
+- **`adb` / `emulator` 也不在 PATH。** SDK 根取 `local.properties` 里的 `sdk.dir`，`export ANDROID_HOME`，
+  再把 `$ANDROID_HOME/platform-tools` 与 `$ANDROID_HOME/emulator` 加进 PATH
+- **上面两条 `export` 只在开它的那个终端窗口里有效，换窗口重做一次。** 工作机上这两条各踩过一次
 - **SDK 只装了 `android-36.1` 与 `android-37.0`**，没有 `android-37`，所以 `compileSdk` 必须带
   `minorApiLevel`
-- **无 `cmdline-tools` / 无 system-image / 无 AVD / 无真机。** APK 装不上、`probe.sh` 跑不了。要打开这条
+- **这处没有 `cmdline-tools` / system-image / AVD / 真机。** APK 装不上、`probe.sh` 跑不了。要打开这条
   路：SDK Manager 里装 `cmdline-tools`，再拉一个 **API 37** 的 system-image 建 AVD——minSdk 37 把验收
   门槛一起抬上去了，低档位镜像不算
 - **`developer.android.com` 连不上。** 查 API 形状去读本地 jar：

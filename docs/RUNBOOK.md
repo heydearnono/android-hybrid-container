@@ -1,13 +1,23 @@
 # RUNBOOK · 人工步骤
 
-pro 的 M4 要求「故意做坏事」十一处各做一遍。**这份文档只写怎么做、看什么**，判据在 pro，状态在
-`TASKS.md`。
+`scripts/check.sh` 跑不到的那一半都在这里：pro 的 M4 要求「故意做坏事」各做一遍，加上 M3 留给模拟器的
+几项。**这份文档只写怎么做、看什么**，判据在 pro，状态在 `TASKS.md`。
 
-前置：一台 **API 37** 的模拟器（`minSdk = 37`）。本机没有 `cmdline-tools`、没有 system-image、没有
-AVD，所以这十一处**一处都还没做过**，别把 `TASKS.md` 里的「已落地」读成「过了」。
+前置：一台 **API 37** 的模拟器（`minSdk = 37`）。
+
+**「一」那六处已经在工作机上做过一遍**（2026-09-21，十六行齐，原文在 `TASKS.md` 的运行记录那节）。
+「二」到「七」**一处都还没做过**——`~/Desktop/github` 这处检出没有 `cmdline-tools`、没有 system-image、
+没有 AVD，两处检出的差别见 [`PITFALLS.md`](PITFALLS.md) 的「环境」。别把 `TASKS.md` 里的「已落地」读成
+「过了」。
 
 `adb` 取 `$ANDROID_HOME/platform-tools/adb`（默认 `~/Library/Android/sdk/platform-tools/adb`）。
-下面写 `adb` 的地方都指这一个。
+下面写 `adb` 的地方都指这一个。每开一个新终端窗口先注入环境：
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+```
 
 ## 一、跟着 `scripts/probe.sh` 走的六处
 
@@ -57,12 +67,16 @@ mv /tmp/crab-index.html app/src/main/assets/probe/index.html
 
 这条要的是「第一次换 WebView 悄悄恢复、第二次进错误界面」，所以**同一次运行里要杀两次**。
 
+**顺序是先 `adb root`**：拿不到就别往下走了——带 Google Play 的镜像一律拒绝它，那种镜像上这一格在
+Android 上整条不成立（已回流 pro 的 M4），退代码走查并在 `TASKS.md` / M5 里明写未验证。
+
 ```bash
+adb root                      # 先这一步。Google Play 镜像上拒绝，拒绝了这一格就到此为止
+
 # 渲染进程的名字是 <包名>:sandboxed_process… 或 …:webview_service，取决于内核实现，所以按包名过滤
 adb shell ps -A | grep net.xiaoluzhu.crab
 
 # 上面那行里不是主进程的那个 pid 就是渲染进程
-adb root                      # Google Play 镜像上不可用，那种镜像上这一格只能空着
 adb shell kill -9 <renderer-pid>
 ```
 
@@ -86,9 +100,90 @@ adb shell kill -9 <renderer-pid>
 切后台那一格与十六条断言无关，是 pro 单独要求人工看一次的。声音（`tone.wav`）与每秒 tick 是端内给它
 加的观察面——不给点声音、不给个在走的数，「停没停」根本看不出来。
 
-## 五、跑完之后
+## 五、开机读一行：`DOCUMENT_START_SCRIPT` 与整串 UA
+
+**最便宜的一格，装上起一次就有。** 两条都在 `CRAB-ENV` 这个前缀下，一次 grep 全拿到：
+
+```bash
+adb shell am force-stop net.xiaoluzhu.crab
+adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+adb logcat -d | grep CRAB-ENV
+```
+
+两行各自要什么：
+
+| 哪一行 | 长什么样 | 拿它干什么 |
+| --- | --- | --- |
+| `CrabContainer` 的 `init` 打的 | `CRAB-ENV DOCUMENT_START_SCRIPT=<true\|false> webview=<包名>/<完整版本号>` | 填 `TASKS.md` 的「M3 · 注入走哪条路」。`inject-order` 绿**不是**这一格的答案：两条路都要求 `injected == 1` |
+| 探针页打的 | `CRAB-ENV ua=… storage=…`（还有每秒的 `tick`） | 整串 UA 抄下来：尾巴是不是 `Crab/0.1.0`、系统 UA 有没有被替换，以及差异表的 UA 那一行 |
+
+`DOCUMENT_START_SCRIPT` 那一行**读到值不等于这一格做完了**：
+
+- `true` → 这台机器一直走原生注入，**兜底那条一次没跑过**，得另找一个旧内核的镜像，或按未验证记
+- `false` → 反过来，原生那条没有观察面；且要确认 `inject-order` 的 PASS 是兜底挣来的
+
+版本号必须连内核包名一起抄（`com.google.android.webview` 与 `com.android.webview` 是两种镜像），换个
+镜像这个结果就不一定还算。查内核的另一条路是 `adb shell cmd webviewupdate query`——**不是**
+`dumpsys webview`，没有那个服务。
+
+那个 `init` 块是一次性诊断，前缀刻意写成字面量、不从 `CrabLog` / `ProbeContract` 派生。**读到结果之后
+可以删掉它**，删了不牵动任何契约与单测。
+
+## 六、文字跟不跟随系统字号
+
+`WebSettings.textZoom = 100` 是取值表里的一项，要看的是它有没有把系统字号那条路一并按住。
+
+```bash
+# 也可以走 设置 → 显示 → 字体大小，拖到最大
+adb shell settings put system font_scale 1.30
+adb shell am force-stop net.xiaoluzhu.crab
+adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+# 看完改回去
+adb shell settings put system font_scale 1.00
+```
+
+看什么：探针页里的文字**大小不变**（原生错误界面上的文字会跟着变，那是 Compose 的 `sp`，不是 WebView
+里的）。要是页面文字跟着变大了，说明 `textZoom` 没挡住系统字号——那不是 bug，是一条要记下来的平台事实，
+并且会让 pro 那笔「关缩放之后由页面侧提供字号调节」的债多一层理由。
+
+**顺手把双指缩放也试一遍**（差异表的「缩放」那一行要它）：两指在页面上撑开，页面不应放大。
+
+## 七、加载后生效差异表 · 手工造实例 B
+
+**最重的一格，放最后。** 七行要的观察面比十六条断言多，现在七格全「未填」。
+
+pro 的做法是两个实例：A 加载前就设成目标值（当基线），B 加载前设成**相反**值、加载完再改回目标值，看
+改动是立即生效 / 重载后生效 / 完全不生效 / 还是改动本身触发了一次重载。**A 就是现在的容器**
+（`applyCrabSpec` 在 `createWebView()` 里一次写完），所以要临时造的只有 B。
+
+B 怎么造（**跑完删掉，一行都不留**）：
+
+1. 在 `MainActivity` 里加第二个 `WebView`（或加一个按钮换掉现有那个），加载前逐项设成相反值：
+   `javaScriptEnabled = false`、`domStorageEnabled = false`、`mixedContentMode = MIXED_CONTENT_ALWAYS_ALLOW`、
+   `allowFileAccess = true`、`mediaPlaybackRequiresUserGesture = false`、`setSupportZoom(true)`、
+   UA 不装饰
+2. 加载入口页，等它跑完
+3. 逐项改成目标值，每改一项看一次，四档里选一档记进 `TASKS.md` 那张表
+
+三项探针页里根本没有的观察面也得临时加（**一样跑完删掉**）：
+
+| 要看 | 临时加什么 |
+| --- | --- |
+| 混合内容 | 一个 `http://` 子资源。模拟器上宿主机是 **`10.0.2.2`**，不是 `127.0.0.1`；随手起 `python3 -m http.server` 即可 |
+| 文件访问 | `fetch('file:///android_asset/probe/probe.png')` 读不读得到 |
+| 有声媒体自动播放 | 一个有声的 `<video autoplay>`，看它自己播不播 |
+
+这一格与其余六格的区别：**其余六格是「跑一遍就有」，这一格要先改代码。** 所以它天然最后做，而且做完
+必须确认工作区干净（`git status` 里没有 `MainActivity` 与探针页的残留），否则临时代码会跟着提交进去。
+
+## 八、跑完之后
 
 `./scripts/probe.sh` 的退出码：有任何一行 FAIL 就非零。把那十六行连同当次的判断贴进 `TASKS.md`
 对应格子（把「待模拟器核实」改成结论），**不要只改状态不留输出**。
 
-十六条之外的观察（切后台、销毁、渲染进程）不进那十六行，结论也写进 `TASKS.md`，写清是哪一格。
+十六条之外的观察（「二」到「七」）不进那十六行，结论也写进 `TASKS.md`，写清是哪一格、哪一遍看到的。
+**造不出来的照实写「造不出来」**：没触发过的恢复路径与写错了的恢复路径在日志上长得一模一样，
+「一直没崩过」不是通过。
+
+平台声明与还成立的技术约束攒进 [`待回流-pro.md`](待回流-pro.md) 等着回流 pro；工具链与环境的坑落
+[`PITFALLS.md`](PITFALLS.md)，**不回流**。
