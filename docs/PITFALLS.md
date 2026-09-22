@@ -34,6 +34,11 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
   `git stash -u` 停掉即可。**绿的组合是 AGP 9.2.1 + Gradle 9.4.1**，不要恢复那个 stash
 - **停掉之后 Studio 会报「built with AGP 9.2.1 but it is synced with 9.3.3」。** 那是它的同步模型旧了，
   不是工程坏了：File → Sync Project with Gradle Files，升级横幅点掉
+- **`gradle/gradle-daemon-jvm.properties` 不要提交。** `./gradlew updateDaemonJvm` 生成的，内容是
+  `toolchainVersion=21` 加十条 foojay 自动下载 URL。提交之后 daemon JVM 的判据就从「路径」变成「版本」，
+  而 JBR 版本随机器变（见下面「环境」）：工作机是 25，找不到 21 就会照那些 URL 下一个 JDK 回来跑，
+  用的已经不是产出绿构建的那个 JVM 了，还给 `./gradlew` 加了一条网络依赖。删掉即可，随时能再生。
+  **也不要加进 `.gitignore`**——留着它在 `git status` 里现形，比被忽略后悄悄影响本地构建好
 - **ktlint 不许 KDoc 挂在 `init` 块上。** `standard:kdoc` 报
   `A KDoc is not allowed inside 'class_initializer'`，而 `spotlessCheck` 是 `check.sh` 的第一步，直接红。
   `init` 块上要写为什么就用 `//`；改成一个只为副作用而存在的 `private val ... : Unit` 属性是更坏的写法
