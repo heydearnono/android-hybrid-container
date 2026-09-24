@@ -102,9 +102,29 @@ adb shell kill -9 <renderer-pid>
 | 探针页上点「播放声音」，按 Home 键等十秒再回来 | 切出去后声音**停**、页面上的 `tick` 数**不涨**；回来后继续。`adb logcat -d \| grep 'CRAB-ENV tick'` 的时间戳里应当有一段十秒左右的断口。声音一直响或 tick 一直涨 = `onPause()` / `pauseTimers()` 没生效 |
 | 在最近任务里划掉应用，再重新起 | 不崩、logcat 里没有 WebView 相关的异常栈。容器销毁时是**先从视图树摘除再 `destroy()`**，顺序反了会崩在渲染层 |
 | 在入口页（没去过第二页时）直接按系统返回键 | 应用退到桌面 / 结束，**不是**卡在页面上什么都不发生。返回键到底之后交回宿主的默认行为 |
+| 紧接上一格：点桌面图标回来，点「跳到第二页」，在第二页按系统返回键 | 回到入口页，**不是**直接退到桌面。上一格那一下，Android 12 起只把任务挪到后台、不销毁 `MainActivity`（`Activity.onBackPressed` 的 javadoc），而 `backCallback` 在那一步已经 `remove()`，回来不会再挂上——按代码推，这一格会直接退到桌面，**没跑过**。退到桌面就照实记下，修法另议 |
 
 切后台那一格与十六条断言无关，是 pro 单独要求人工看一次的。声音（`tone.wav`）与每秒 tick 是端内给它
 加的观察面——不给点声音、不给个在走的数，「停没停」根本看不出来。
+
+### 多实例：换一种请求起应用，再点图标
+
+对应 [`待回流-pro.md`](待回流-pro.md) 第 5 条，把那里「叠新实例」的推测换成实测。**这是全篇唯一故意只写
+`-n` 的地方**，跑两遍对照：
+
+```bash
+# 第一遍：只写 -n
+adb logcat -c
+adb shell am force-stop net.xiaoluzhu.crab
+adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+# 按 Home，再点桌面图标，然后：
+adb shell dumpsys activity activities | grep -E 'Hist #.*net.xiaoluzhu.crab'
+
+# 第二遍：换成带 MAIN + LAUNCHER 的那条 am start，其余相同
+```
+
+看什么：第一遍有**两条** `MainActivity` 的 `Hist`，行尾的 `t<数字>` 相同（同一个任务）；第二遍只有一条。
+`dumpsys` 的格式随版本变，grep 不到就去掉过滤、把 `net.xiaoluzhu.crab` 附近那段原样贴回来。
 
 ## 五、开机读一行：`DOCUMENT_START_SCRIPT` 与整串 UA
 
