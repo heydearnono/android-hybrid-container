@@ -169,12 +169,14 @@ B 怎么造（**跑完删掉，一行都不留**）：
 
 | 要看 | 临时加什么 |
 | --- | --- |
-| 混合内容 | 一个 `http://` 子资源。模拟器上宿主机是 **`10.0.2.2`**，不是 `127.0.0.1`；随手起 `python3 -m http.server` 即可 |
-| 文件访问 | `fetch('file:///android_asset/probe/probe.png')` 读不读得到 |
+| 混合内容 | 一个 `http://` 子资源。模拟器上宿主机是 **`10.0.2.2`**，不是 `127.0.0.1`；随手起 `python3 -m http.server` 即可。**manifest 要临时加两样，跑完删掉**：`<uses-permission android:name="android.permission.INTERNET" />`，以及 `<application>` 上的 `android:usesCleartextTraffic="true"`。容器本来一条网络请求都不发，两样都没有；缺前一样请求发不出去，缺后一样 WebView 照样拦明文（`NetworkSecurityPolicy.isCleartextTrafficPermitted` 的 javadoc：WebView 对 targetSdk 26 起的应用遵守这个开关）。不加的话 `mixedContentMode` 设成什么都加载不到，会被误记成「完全不生效」 |
+| 文件访问 | **按 pro 的观察法分辨不出，待 pro 议**。`setAllowFileAccess` 管不到 `file:///android_asset`，而页面在 `https://` 上、`fetch` 本来就拿不到 `file://`，所以开与关都是「读不到」。仍照原样 `fetch('file:///android_asset/probe/probe.png')` 一次、把报错原文抄下来：那能坐实后一半，它现在还是按 Chromium 的行为推的。细节见 [`待回流-pro.md`](待回流-pro.md) 第 4 条 |
 | 有声媒体自动播放 | 一个有声的 `<video autoplay>`，看它自己播不播 |
 
 这一格与其余六格的区别：**其余六格是「跑一遍就有」，这一格要先改代码。** 所以它天然最后做，而且做完
-必须确认工作区干净（`git status` 里没有 `MainActivity` 与探针页的残留），否则临时代码会跟着提交进去。
+必须确认工作区干净（`git status` 里没有 `MainActivity`、`:core:webview`、`AndroidManifest.xml` 与探针页的
+残留），否则临时代码会跟着提交进去。B 要挂容器那个私有的 `assetLoader` 才加载得了承载 origin，所以临时
+代码多半会落到 `:core:webview`，不只是 `MainActivity`。
 
 ## 八、跑完之后
 

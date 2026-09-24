@@ -113,5 +113,7 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
   门槛一起抬上去了，低档位镜像不算
 - **`developer.android.com` 连不上。** 查 API 形状去读本地 jar：
   `~/.gradle/caches/modules-2/files-2.1/` 下的 `-sources.jar` / `.pom`，aar 里的 `classes.jar` 用
-  `javap` 打签名。比搜索可靠，也不会编出不存在的方法
+  `javap` 打签名。比搜索可靠，也不会编出不存在的方法。**要看 javadoc 读 `sdk/sources/android-36.1/`**：
+  那里是带注释的框架源码（`platforms/` 下的 stub 源码 jar 不带 javadoc），`setAllowFileAccess` 管不到
+  `android_asset` 就是从这里读到的
 - 首次构建要联网下 wrapper 与依赖；`./scripts/env-probe.sh` 一次看完上面全部

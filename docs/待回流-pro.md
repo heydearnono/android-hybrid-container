@@ -45,6 +45,21 @@ pro 的 M3 要求看一次「文字跟不跟随系统字号」。取法写在 [`
 
 这一格读到之前不回流，留个位置免得忘。
 
+### 4. 差异表「文件访问」那一行，按 pro 定的观察法在 Android 上分辨不出档位
+
+pro 的 M5 差异表对这一行定的观察法是「`fetch` 一个 `file://` URL 能否读到」。本端照它写的临时观察面是
+`fetch('file:///android_asset/probe/probe.png')`，两处都挡着它：
+
+- **`setAllowFileAccess` 管不到 `android_asset`。** `sdk/sources/android-36.1` 里的 javadoc 原文：
+  「this enables or disables file system access only. Assets and resources are still accessible using
+  file:///android_asset and file:///android_res」。本机读到的，不需要模拟器
+- **页面在 `https://` 承载 origin 上，`fetch` 本来就拿不到 `file://`。** Chromium 的 `fetch` 不认
+  `file:` scheme。这一半**还没在模拟器上看过**，是按 Chromium 的行为推的
+
+两样叠起来，B 实例里这一项开与关都是「读不到」，四档里哪一档都填不进去。换成别的观察法（比如原生侧直接
+`loadUrl` 一个 `file:///data/…` 路径）改的是三端共同的观察法，按 `CLAUDE.md` 的第三条纪律**不在本仓
+自决**。在 pro 议定之前，`TASKS.md` 差异表的这一格照实写「按 pro 的观察法分辨不出，待 pro 议」。
+
 ## 已回流（`e857625..287c92d` 那一批，四条）
 
 留档，不要再报一遍：
