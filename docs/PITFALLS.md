@@ -51,6 +51,11 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
   代价是 `:core:webview` 一条测试也不能写，所有判定必须下沉到 `:core:container`
 - **`.js` / `.html` 不在 Spotless 范围，也没有 JS lint。** 探针页与 Kotlin 侧的对应关系（slug 清单、
   `<!--CRAB-INJECT-->` 标记、`window.__CRAB__` 的形状）编译器管不到，只能靠扫文本的单测兜着
+- **只改了 `.sh` / `.js` / `.html`，`check.sh` 的绿可能是没跑出来的绿。** `:app` 那三条扫文本的测试
+  自己去读仓库里的文件，这些文件没登记成 Gradle 的任务输入，所以 Gradle 认为测试「没变」、直接
+  `UP-TO-DATE` 跳过。实测（2026-09-24）：改了 `scripts/probe.sh` 再跑 `check.sh`，日志里是
+  `:app:testDebugUnitTest UP-TO-DATE`。只动了这类文件时，另跑一次
+  `./gradlew :app:testDebugUnitTest --rerun`，看到任务真的执行了才算数
 
 ## 模块与依赖
 
@@ -95,6 +100,11 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
 | `~/Desktop/github` 下这处 | 无 `cmdline-tools` / 无 system-image / 无 AVD / 无真机 | ✓ remote 是 SSH，正常 |
 
 所以运行记录产在工作机、提交与推送落在这处；**这处的 AI 会话只跑得动编译、单测、静态检查那三样**。
+
+- **两处之间搬提交，基点写两边共有的那个提交，不写 `origin/main`。** 工作机的 `origin/main` 拉不动，
+  停在上一次能 fetch 的地方；`git format-patch origin/main` 会把已经在远端的提交再导一遍，回到这处
+  `git am` 就冲突。反方向（这处 → 工作机）用 `git bundle create <文件> <工作机的 HEAD>..main`，工作机上
+  `git pull <文件> main`。开跑之前先比一次两边的 HEAD：工作机落后时，后来才加的日志根本打不出来
 
 - **`java` 不在 PATH。** macOS 的 `/usr/bin/java` 只是存根：`command -v java` 会成功而 `java -version`
   报错，所以探测要看退出码（注意别接管道——`java -version | head` 拿到的是 `head` 的退出码）。终端里
