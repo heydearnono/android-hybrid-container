@@ -68,12 +68,13 @@ permission PASS
 [`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」一节：本机没有 `cmdline-tools` / system-image / AVD，
 `probe.sh` 在本机起不来，所以本机的 AI 会话只能跑编译、单测、静态检查那三样。
 
-**十六行不覆盖的还有六格**，一条都没跑过，逐格记在下面各节：
+**十六行不覆盖的还有六格**，逐格记在下面各节。`DOCUMENT_START_SCRIPT` 那一格 2026-09-23 读到了值，
+切后台那一行 2026-09-24 看过一次（原始输出待补），其余还没跑：
 
 | 还欠什么 | 记在哪一节 |
 | --- | --- |
-| `DOCUMENT_START_SCRIPT` 的取值（注入走原生还是兜底） | M3 · 注入走哪条路 |
-| 切后台 / 最近任务划掉 / 入口页直接后退 | M4 · 三格 |
+| `DOCUMENT_START_SCRIPT` 的取值（注入走原生还是兜底） | M3 · 注入走哪条路。**已读到 `true`**（2026-09-23）：走原生，兜底那条没跑过 |
+| 切后台 / 最近任务划掉 / 入口页直接后退 | M4 · 三格。切后台已观察到停播、停表（2026-09-24，原始输出待补）；另两格未跑 |
 | 渲染进程终止两次 | M4 · 那一格 |
 | 入口文件挪走看错误态 | M4 · 那一格 |
 | 加载后生效差异表 Android 那一列 | M5 · 差异表 |
@@ -89,7 +90,7 @@ permission PASS
 | 只剩走查 | pro 明写在容器阶段没有观察面，M5 里要照实写「未验证」 |
 
 **「已落地」仍然不等于「过了」，「已核实」才是。** 十六条已经在真容器里跑过一遍，但它们只覆盖十六条；
-上面那六格一条没跑，别拿退出码 0 当整个 M2–M4 都过了。
+上面那六格大多还没跑，别拿退出码 0 当整个 M2–M4 都过了。
 
 ## M1 · 装到模拟器
 
@@ -169,9 +170,9 @@ M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六�
 | 文件与内容访问四项全关 | 同上四个字段 | 取值已落地 / 写入**十六行不覆盖**（探针页没有 `file://` 请求） |
 | 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实（六格之一） |
 | 多窗口 / 脚本开窗 / 定位**显式开** | 三项 true，为的是 M4 的回调能被调用后当场拒绝并留日志 | 已核实（`nav-blank` 与 `permission` 都 PASS——回调被调用了才有那几行日志） |
-| UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 / 生效值**只读到一半**（见下） |
+| UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 + 已核实（2026-09-23 整串抄下：结尾 `Crab/0.1.0`，系统 UA 完整保留，见下） |
 | 页面开口之前注入，`inject-order` 成立 | `DocumentStartScript.source` + `WebViewCompat.addDocumentStartJavaScript`；入口页首行 `<script>` 记快照 | 已核实（`inject-order` PASS） |
-| 不支持时走兜底，且**两条路不叠加** | `CrabContainer.documentStartScriptSupported` 一个布尔决定；兜底是 `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML | 不叠加已核实（`injected == 1`）/ **走的是哪条不知道**，见下一节 |
+| 不支持时走兜底，且**两条路不叠加** | `CrabContainer.documentStartScriptSupported` 一个布尔决定；兜底是 `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML | 不叠加已核实（`injected == 1`）/ **本机走原生，兜底没跑过**（`DOCUMENT_START_SCRIPT=true`，见下一节） |
 | 注入范围不漏到别的 origin（`inject-scope`） | `HostingOrigin.allowedOriginRules`；页面用 `data:` iframe 经 `postMessage` 自报 | 已核实（`inject-scope` PASS，**只覆盖帧那一面**）|
 | 脚本重复注入看得出来 | 脚本用 `window.__CRAB__ ||` 初始化、`injected` 只增不减；`DocumentStartScriptTest` 盯着源码里这两条 | 已落地 |
 | 兜底只改 HTML、不碰素材 | `DocumentStartScript.appliesTo`（`DocumentStartScriptTest`） | 已落地 |
@@ -179,18 +180,19 @@ M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六�
 | storage 跨启动存活，容器不主动清空 | 同样是**什么都不做**：全仓没有 `clearCache` / `WebStorage` / `removeAllCookies` 的调用 | 只剩走查 / 跨启动存活待模拟器核实 |
 | 加载后生效差异表（七行） | 探针页 `CRAB-ENV` 一行打 UA 与 `typeof localStorage` | 待模拟器核实（七格全空，见 M5 那节） |
 
-**UA 那一格只读到一半，照实记。** 那一遍从探针页打出来的 UA 里读到了 `Chrome/145`（内核大版本就是这么
-拿到的），但**整串 UA 没有被抄下来**，所以「尾巴是不是 `Crab/0.1.0`、系统 UA 有没有被替换」这两问还没有
-证据。下次开机回读一次即可：
+**UA 那一格已核实**（2026-09-23，工作机 API 37 AVD，`adb logcat -d | grep 'CRAB-ENV'`）。原文：
 
-```bash
-adb logcat -d | grep 'CRAB-ENV'
+```
+CRAB-ENV UA: Mozilla/5.0 (Linux; Android 10; K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/145.0.0.0 Mobile Safari/537.36 Crab/0.1.0 · typeof localStorage: object
 ```
 
-`UserAgent.decorate` 的拼接形状有 `UserAgentTest` 盯着，缺的只是「生效值确实长这样」这一次观察。
-差异表的 UA 那一行、M5 三端并排比 UA 也都要这一串。
+- 结尾是 `Crab/0.1.0`，前面的系统 WebView UA 完整保留（带 `wv`），没有被整串替换。拼接形状由
+  `UserAgentTest` 盯着，这一次观察补上的是「生效值确实长这样」
+- `Android 10; K` 与 `Chrome/145.0.0.0` 是 UA 缩减冻住的段，已回流 pro 的 M3，不再报
+- 这串是**实例 A 的基线**。差异表 UA 那一格要的是实例 B 的前后对照，仍是「未填」；M5 三端并排比 UA
+  用的就是这一串
 
-### M3 · 注入走哪条路（六格之一，代码已就位、值还没读）
+### M3 · 注入走哪条路（六格之一，已读到 `true`）
 
 pro 的 M3「要试出来的」明写这一格**不能拿 `inject-order` 绿当答案**：原生注入与兜底都要求
 `injected == 1`，那是设计意图（两条叠加就是 bug），所以绿了认不出走的是哪条。支持与否只能另打一次。
@@ -211,8 +213,18 @@ CRAB-ENV DOCUMENT_START_SCRIPT=<true|false> webview=<包名>/<完整版本号>
 | `true` | 这台机器一直走 `addDocumentStartJavaScript`，**兜底那条一次没跑过** | `CrabAssetPathHandler(inlineDocumentStartScript = true)` 改写 HTML 那条路没有观察面。要么找一个旧内核的镜像，要么在 M5 里按未验证写 |
 | `false` | 这台机器一直走兜底，**原生那条没有观察面** | 反过来同理；且要确认 `inject-order` 的 PASS 是兜底挣来的 |
 
-**现在这一格是空的**：本机没有模拟器（见 [`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」），代码进了仓
-但那一行日志还没有人读过。`./scripts/check.sh` 绿只说明它编得过。
+**读到的是 `true`**（2026-09-23，工作机 API 37 AVD，`adb logcat -d | grep 'CRAB-ENV'`）。原文：
+
+```
+CRAB-ENV DOCUMENT_START_SCRIPT=true webview=com.google.android.webview/145.0.7632.218
+```
+
+- 注入一直走原生的 `addDocumentStartJavaScript`，`inject-order` 的 PASS 是原生那条跑出来的
+- 兜底那条（`CrabAssetPathHandler` 改写 HTML）**一次都没跑过**。要观察它得另找一个内核不支持
+  `DOCUMENT_START_SCRIPT` 的镜像；找到之前，M5 里按「未验证」写
+- 结论只对 `com.google.android.webview/145.0.7632.218` 这个内核成立，换镜像要重读
+
+打这一行的 `init` 块留到收口时删。
 
 **M3 留给模拟器的两个未知**（原先三个，`data:` iframe 那条已经答掉）：
 
@@ -253,12 +265,13 @@ M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin
 | 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / **待核实，且可能整条不成立**（六格之一，见下） |
 | 重试回 Loading、重新加载、额度给满 | `ContainerCoordinator.onRetry`；`ContainerCoordinatorTest` | 已落地 |
 | SSL 错误只 `cancel()`，一次也不许 `proceed()` | `CrabWebViewClient.onReceivedSslError` | 已落地 / **这条路没有观察面**（见下） |
-| 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | **待核实**（六格之一） |
+| 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | **已观察到，原始输出待补**（2026-09-24 工作机 API 37 AVD：点「播放声音」后按 Home，声音停，`onPause()` 生效；从最近任务切回，tick 接着之前的编号走，`pauseTimers()` 生效。tick 日志的时间戳断口还没留下，重跑后补原文） |
 | 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | **待核实**（六格之一，最近任务划掉那一遍） |
 
 **这十六行覆盖到的与没覆盖到的，界线就在「有没有按钮」。** 十六条断言全是探针页上的按钮 + logcat 回读，
 所以导航、对话框、权限那九格一遍跑完；而「切后台」「最近任务划掉」「在入口页直接后退」「删掉入口文件」
-「杀渲染进程」这五件事探针页上没有按钮，得按 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 另外走，一次都还没走。
+「杀渲染进程」这五件事探针页上没有按钮，得按 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 另外走。除了切后台
+看过一次，其余四件还没走。
 
 ### M4 留下的四处不确定，照实记
 
@@ -320,7 +333,7 @@ pro 的 M5 是三端汇合，**汇合本身不在本仓**（贴到 pro 的 issue
 | 4 | `intercept` | 页面 `fetch` 不存在的路径，要 404 + `INTERCEPTED` | PASS |
 | 5 | `escape` | 页面 `fetch ../outside/…`，读到 `OUT_OF_BOUNDS` 即 FAIL | PASS（`AssetRoutingTest` 覆盖同一判据） |
 | 6 | `escape-encoded` | 同上，`%2e%2e%2f` 与双重编码 | PASS（同上） |
-| 7 | `inject-order` | 入口页首行脚本记的快照 | PASS，**但认不出走的是原生还是兜底**（见 M3 那一节） |
+| 7 | `inject-order` | 入口页首行脚本记的快照 | PASS，**挣来 PASS 的是原生那条**（`DOCUMENT_START_SCRIPT=true`）；兜底那条没跑过，按未验证记（见 M3 那一节） |
 | 8 | `inject-scope` | `data:` iframe 经 `postMessage` 自报 | PASS，**只覆盖帧那一面**（见下） |
 | 9 | `nav-same-origin` | 第二页留的 `sessionStorage` 标记 | PASS |
 | 10 | `nav-back` | 同一个标记 + 当前在入口页 | PASS（**入口页上再退一次**那半没覆盖） |
@@ -354,7 +367,7 @@ pro 的做法是两个实例：A 加载前设成目标值当基线，B 加载前
 | UA | 未填 | `navigator.userAgent` 打印出来（探针页的 `CRAB-ENV` 那行已经在打） |
 
 **七格全空，写「未填」而不是「不生效」。** 十六行那一遍跑的是实例 A 的基线形态，一格也没喂进这张表：
-探针页只有 UA 与 `typeof localStorage` 两项在打（UA 那串还没抄下来），混合内容、`file://`、
+探针页只有 UA 与 `typeof localStorage` 两项在打（实例 A 的整串已抄下，但那是基线、不是对照），混合内容、`file://`、
 `<video autoplay>` 三样探针页里根本没有。**差异表要的东西比十六条断言多，这一点别混。**
 
 **「文件访问」那一格跑了也填不进四档。** `setAllowFileAccess` 的 javadoc 写明它管不到
@@ -403,8 +416,6 @@ pro 的 `开工.md` 要求每个里程碑收尾把「怎么算过」那几格的
 | 欠什么 | 卡在哪 |
 | --- | --- |
 | 六格里的五格：切后台 / 最近任务划掉 / 入口页直接后退、删入口文件看错误态、渲染进程终止两次、系统字号、差异表 | 要 AVD。这处连 `cmdline-tools` 都没有；要打开这条路得在 SDK Manager 里装 `cmdline-tools` + 拉一个 API 37 的 system-image |
-| 六格里的第六格：`DOCUMENT_START_SCRIPT` 的取值 | 代码（`CrabContainer` 的 `init` 块）已经进仓且 `check.sh` 绿，缺的只是开机 `adb logcat -d \| grep CRAB-ENV` 一次 |
-| 整串 UA | 同上，同一行日志里就有 |
 | 结果贴到 pro 的 issue | `gh` 未登录；且工作机的 remote 是 HTTPS、GitHub 在那台上被 reset，推不上去。提交与推送只能从这处走 |
 | 平台事实回流 pro | 本次会话的边界仍是「pro 仓一个字不改」（唯一例外是搬完之后删掉 `交接-and.md`，那是 `开工.md` 定的规矩）。攒着的见 [`docs/待回流-pro.md`](docs/待回流-pro.md) |
 

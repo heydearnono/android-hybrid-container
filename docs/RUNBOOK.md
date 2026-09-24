@@ -6,7 +6,8 @@
 前置：一台 **API 37** 的模拟器（`minSdk = 37`）。
 
 **「一」那六处已经在工作机上做过一遍**（2026-09-21，十六行齐，原文在 `TASKS.md` 的运行记录那节）。
-「二」到「七」**一处都还没做过**——`~/Desktop/github` 这处检出没有 `cmdline-tools`、没有 system-image、
+**「五」也做完了**（2026-09-23，两行原文在 `TASKS.md` 的「M3 · 注入走哪条路」）。其余几处做到哪以
+`TASKS.md` 为准，这里不记进度——`~/Desktop/github` 这处检出没有 `cmdline-tools`、没有 system-image、
 没有 AVD，两处检出的差别见 [`PITFALLS.md`](PITFALLS.md) 的「环境」。别把 `TASKS.md` 里的「已落地」读成
 「过了」。
 
@@ -115,7 +116,7 @@ adb logcat -d | grep CRAB-ENV
 | 哪一行 | 长什么样 | 拿它干什么 |
 | --- | --- | --- |
 | `CrabContainer` 的 `init` 打的 | `CRAB-ENV DOCUMENT_START_SCRIPT=<true\|false> webview=<包名>/<完整版本号>` | 填 `TASKS.md` 的「M3 · 注入走哪条路」。`inject-order` 绿**不是**这一格的答案：两条路都要求 `injected == 1` |
-| 探针页打的 | `CRAB-ENV ua=… storage=…`（还有每秒的 `tick`） | 整串 UA 抄下来：尾巴是不是 `Crab/0.1.0`、系统 UA 有没有被替换，以及差异表的 UA 那一行 |
+| 探针页打的 | `CRAB-ENV UA: … · typeof localStorage: …`（还有每秒一行的 `CRAB-ENV tick …`） | 整串 UA 抄下来：尾巴是不是 `Crab/0.1.0`、系统 UA 有没有被替换，以及差异表的 UA 那一行 |
 
 `DOCUMENT_START_SCRIPT` 那一行**读到值不等于这一格做完了**：
 
