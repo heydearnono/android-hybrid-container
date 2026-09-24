@@ -80,6 +80,12 @@ API 语义）不进这里，它们属三端共同的判据，落在 pro 的各�
 ## 模拟器与 `probe.sh`
 
 - **不要用 Studio 的 Run 按钮装应用。** 它和 `probe.sh` 里的 `:app:installDebug` 会撞
+- **用 `am start -n` 起过应用之后，别从桌面图标切回来，会多开一个实例。** 实测（2026-09-24）：
+  `am start -n` 起 → Home → 点图标，系统新建了一个 `MainActivity`，页面重载、tick 从 0 起；从最近任务
+  切回则回到原实例。`am start -n` 只填了 component，桌面图标发的是 `MAIN` + `LAUNCHER` + component，
+  系统按 `Intent.filterEquals` 比这两个请求、对不上。要么从最近任务切回，要么起的时候就带上
+  `-a android.intent.action.MAIN -c android.intent.category.LAUNCHER`（`probe.sh` 与 RUNBOOK 已经这样写）。
+  真实用户那一面是平台事实，记在 [`待回流-pro.md`](待回流-pro.md) 第 5 条
 - **`probe.sh` 开头 `logcat -c` 清日志，所以每次重跑，八个按钮、三个对话框、那一次系统返回键都得从头
   做一遍。** 不做就回车，红的正好是所有靠交互的 slug——第一次跑就是这样：8 PASS + 7 FAIL。
   **那不是实现坏了**

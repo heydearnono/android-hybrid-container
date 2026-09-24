@@ -60,6 +60,44 @@ pro 的 M5 差异表对这一行定的观察法是「`fetch` 一个 `file://` UR
 `loadUrl` 一个 `file:///data/…` 路径）改的是三端共同的观察法，按 `CLAUDE.md` 的第三条纪律**不在本仓
 自决**。在 pro 议定之前，`TASKS.md` 差异表的这一格照实写「按 pro 的观察法分辨不出，待 pro 议」。
 
+### 5. 从别的入口进来过一次，再点桌面图标会多开一个容器宿主
+
+要 pro 议的问题：**容器宿主是不是单实例？**
+
+实测（2026-09-24，工作机 API 37 AVD）：
+
+- `adb shell am start -n …/.MainActivity` 启动 → 按 Home → 点桌面图标：新建了一个 `MainActivity`，
+  页面重新加载，tick 从 0 开始
+- 同样的前提下改从最近任务切回：回到原来那个实例，tick 衔接
+
+平台事实（本机读源码，不需要模拟器）：系统拿 `Intent.filterEquals` 比这次的启动请求与任务的根请求。
+`sdk/sources/android-36.1/android/content/Intent.java` 第 11949–11962 行，比的是 action、data、type、
+identifier、package、component、categories 七项，**不比 extras 与 flags**。`am start -n` 只填了
+component；桌面图标发的是 `MAIN` + `LAUNCHER` + component，两者不等。
+
+**推测**（SDK 源码里没有，按现象推的）：对不上之后，因为 `MainActivity` 是默认的 `standard` 启动模式，
+系统在原任务上叠了一个新实例。「叠新实例」这一段是系统服务端的逻辑，不在 SDK 里。
+
+真实用户会不会碰到：现在只有桌面图标一个入口，所以还碰不到。但只要有下面任一入口，用户从那里进来、
+按 Home、再点图标，就会多开一个容器：
+
+- 推送通知的 `PendingIntent`（带自定义 action 或 data）
+- 深链接
+- 别的应用显式启动 `MainActivity`（它是 `exported="true"`）
+
+代价：多一个 `CrabContainer` 与 `WebView`，可能还多一个渲染进程；页面重载；两个实例 JS 内存里的状态
+分叉。
+
+修法候选两个，**都不在本仓定**，本仓不改 `launchMode`、也不改 `MainActivity`：
+
+1. `launchMode` 设 `singleTop` 或 `singleTask`，复用实例、新请求走 `onNewIntent`
+2. `onCreate` 里判「不是任务根，且请求是 `MAIN` + `LAUNCHER`」就 `finish()`
+
+鸿蒙的 UIAbility 启动模式与 iOS 的多 scene 都有对应机制，所以这是三端问题，不是 Android 一端的。
+
+本端测法那一侧已经按出口 1 改了：`scripts/probe.sh` 与 RUNBOOK 的 `am start` 都带上 `MAIN` + `LAUNCHER`，
+见 [`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」。
+
 ## 已回流（`e857625..287c92d` 那一批，四条）
 
 留档，不要再报一遍：

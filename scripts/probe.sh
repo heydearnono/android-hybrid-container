@@ -49,7 +49,10 @@ fi
 echo "== 清日志并启动 =="
 "$ADB" logcat -c
 "$ADB" shell am force-stop "$APP_ID" >/dev/null
-"$ADB" shell am start -n "$ACTIVITY" >/dev/null
+# 带上 MAIN + LAUNCHER，与桌面图标发的请求同形：只写 -n 的话，之后点图标会被系统当成另一个请求、
+# 多开一个 MainActivity（见 docs/PITFALLS.md「模拟器与 probe.sh」）
+"$ADB" shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
+  -n "$ACTIVITY" >/dev/null
 
 cat <<'CHECKLIST'
 

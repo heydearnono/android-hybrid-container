@@ -20,6 +20,10 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 ```
 
+**命令行起应用一律带 `-a android.intent.action.MAIN -c android.intent.category.LAUNCHER`**，形状与桌面
+图标发的请求一致。只写 `-n` 的话，之后按 Home 再点桌面图标会多开一个 `MainActivity`，页面重载、tick
+从 0 起，切后台那一格就看不出断口了（见 [`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」）。
+
 ## 一、跟着 `scripts/probe.sh` 走的六处
 
 `./scripts/probe.sh` 会装好、清日志、起应用，然后**停下来等你**。它不代按：按完再回车，它才去回读
@@ -52,7 +56,8 @@ mv app/src/main/assets/probe/index.html /tmp/crab-index.html
 # 3. 起应用看错误界面
 adb logcat -c
 adb shell am force-stop net.xiaoluzhu.crab
-adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
+  -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
 adb logcat -d | grep CRAB-ERR
 
 # 4. 放回去，重新装一遍，确认恢复
@@ -107,7 +112,8 @@ adb shell kill -9 <renderer-pid>
 
 ```bash
 adb shell am force-stop net.xiaoluzhu.crab
-adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
+  -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
 adb logcat -d | grep CRAB-ENV
 ```
 
@@ -138,7 +144,8 @@ adb logcat -d | grep CRAB-ENV
 # 也可以走 设置 → 显示 → 字体大小，拖到最大
 adb shell settings put system font_scale 1.30
 adb shell am force-stop net.xiaoluzhu.crab
-adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
+adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
+  -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
 # 看完改回去
 adb shell settings put system font_scale 1.00
 ```
