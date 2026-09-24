@@ -37,3 +37,6 @@ keystore.properties
 # 诊断产物
 *.hprof
 *.log
+
+# 模拟器那一半的证据原件（capture.sh / probe.sh 落盘）：每秒一行 tick 体积大，还带设备信息
+/runs/

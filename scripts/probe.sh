@@ -7,6 +7,8 @@
 # 输出固定十六行 `<slug> PASS|FAIL|MANUAL`，顺序与 pro 的清单一致（Kotlin 侧的定义处是
 # ProbeContract.SLUGS，ProbeContractAlignmentTest 盯着这个文件里的顺序与它一致）。
 # 没有对应记录的一律 FAIL——「没跑到」和「跑坏了」都是断言没成立。
+#
+# 回读的 logcat 与那十六行一并留进 runs/<时间>-probe/（不提交），十六行的原文不再靠手抄。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -19,7 +21,7 @@ for arg in "$@"; do
   case "$arg" in
     --no-install) INSTALL=0 ;;
     -h | --help)
-      sed -n '2,10p' "$0"
+      sed -n '2,11p' "$0"
       exit 0
       ;;
     *)
@@ -68,9 +70,20 @@ cat <<'CHECKLIST'
 CHECKLIST
 read -r _
 
-LOG="$(mktemp -t crab-probe)"
-trap 'rm -f "$LOG"' EXIT
+RUN_NAME="$(date +%Y%m%d-%H%M%S)-probe"
+RUN_DIR="runs/$RUN_NAME"
+mkdir -p "$RUN_DIR"
+LOG="$RUN_DIR/logcat.txt"
+RESULT="$RUN_DIR/result.txt"
 "$ADB" logcat -d > "$LOG"
+grep -E 'CRAB-' "$LOG" > "$RUN_DIR/crab.txt" || true
+{
+  echo "HEAD: $(git rev-parse HEAD 2>/dev/null || echo '?')"
+  echo "未提交:"
+  git status --short 2>/dev/null || true
+  echo "设备: $("$ADB" get-serialno | tr -d '\r')"
+  echo "ro.build.version.sdk: $("$ADB" shell getprop ro.build.version.sdk | tr -d '\r')"
+} > "$RUN_DIR/env.txt"
 
 # 页面侧结果：取该 slug 最后一行（重跑时以最后一次为准）。
 page_verdict() {
@@ -126,7 +139,7 @@ permission_verdict() {
 echo "== 结果 =="
 FAILED=0
 emit() {
-  printf '%s %s\n' "$1" "$2"
+  printf '%s %s\n' "$1" "$2" | tee -a "$RESULT"
   [[ $2 == FAIL ]] && FAILED=1
   return 0
 }
@@ -148,5 +161,8 @@ emit nav-system-scheme MANUAL
 emit nav-unknown-scheme "$(unknown_scheme_verdict)"
 emit dialog "$(dialog_verdict)"
 emit permission "$(permission_verdict)"
+
+tar -czf "runs/$RUN_NAME.tar.gz" -C runs "$RUN_NAME"
+echo "== 落盘：$RUN_DIR/（打包：runs/$RUN_NAME.tar.gz）==" >&2
 
 exit "$FAILED"

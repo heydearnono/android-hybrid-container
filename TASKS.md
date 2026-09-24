@@ -80,6 +80,8 @@ permission PASS
 | 加载后生效差异表 Android 那一列 | M5 · 差异表 |
 | 文字跟不跟随系统字号 | M3 · 缩放那一行 |
 
+这几格往后不再手敲 `adb` 抄输出，改成人只操作、日志自动落盘，规划见「后续 · 模拟器那一半的日志自动落盘」。
+
 ## 状态记号
 
 | 记号 | 意思 |
@@ -406,6 +408,70 @@ pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（
 
 不另设汇总表——本文件就是那份记录，pro 那边只收结果与平台事实。等着回流 pro 的平台事实攒在
 [`docs/待回流-pro.md`](docs/待回流-pro.md)。
+
+## 后续 · 模拟器那一半的日志自动落盘（脚本已写，未在工作机上真跑）
+
+**现在的收法太费人**：RUNBOOK 二到六每一处都要人自己敲 `adb logcat -c` / `am start` / `logcat -d | grep`，
+再把输出抄回来。切后台那一格就是这样卡在「原始输出待补」的：看到了，但 tick 的时间戳没留下；而且
+`logcat -d` 是事后读环形缓冲，每秒一行 tick 很快就把前面的挤掉。
+
+**目标**：人只管在模拟器上操作，日志从开始到结束自动写进固定目录；做完把那一个目录（或打好的包）交出来，
+判断、摘原文进本文件都由 AI 做。
+
+### 形状
+
+`scripts/capture.sh [--install] <场景>`，场景对 RUNBOOK 的各节：
+
+| 场景 | RUNBOOK | 脚本代做的准备动作（都在 adb 这一层，不点页面） |
+| --- | --- | --- |
+| `env` | 五 | 起应用，等两行 `CRAB-ENV` 出来就结束 |
+| `background` | 四·切后台 | 起应用；人点「播放声音」→ Home → 等十秒 → 从最近任务切回 |
+| `destroy` | 四·划掉 | 起应用；人在最近任务里划掉再从图标起 |
+| `back-at-root` | 四·入口页后退 | 起应用；人在入口页直接按返回键，再从图标回来进第二页后退（后一半是 RUNBOOK 四「紧接上一格」那行）；结束时存一份 `dumpsys activity activities` |
+| `multi-instance` | 四·多实例 | 先只带 `-n` 起，人按 Home 再点图标，存一份 `dumpsys activity activities`；再带 `MAIN` + `LAUNCHER` 重复一遍 |
+| `font-scale` | 六 | `font_scale` 设 1.30 再起应用，**退出时（含 Ctrl-C）一律改回 1.00** |
+| `render-gone` | 三 | 先 `adb root`，拒绝就把拒绝原文落盘并结束；拿到了就找渲染进程（按起应用前后多出来的 `sandboxed_process` 找）、`kill -9`，人确认页面恢复后回车再杀第二次 |
+| `missing-entry` | 二 | 挪走入口页、绕过 `check.sh` 直接装；**退出时放回并重装**，放回失败要大声报 |
+| `free` | — | 什么都不做，只录。临时造实例 B 那一类用它 |
+
+每次跑产出一个目录 `runs/<YYYYMMDD-HHMMSS>-<场景>/`，结束时再打一个同名 `.tar.gz`：
+
+| 文件 | 内容 |
+| --- | --- |
+| `logcat.txt` | `adb logcat -v threadtime -b main,system,crash` **从开跑持续写到结束**，不是事后 `-d`。不按 pid 过滤：划掉应用那一格进程会换 |
+| `crab.txt` | 从上面筛出的 `CRAB-` 行，AI 先读这份 |
+| `env.txt` | 本仓 HEAD、设备序列号、`ro.build.version.sdk`、WebView 包名与版本（`dumpsys webviewupdate`）、`font_scale`、开始与结束时的 `pidof` / `ps -A \| grep 包名` |
+| `steps.txt` | 脚本打给人的那份清单，加上人在终端里随手敲的备注 |
+| 其余 | 场景各自的：`shot-*.png`（终端里敲 `shot` 截的）、`activities*.txt`、`root.txt`、`ps-*.txt` |
+
+备注是**可选的**：跑的时候在终端里敲一行（比如「按了 Home」）回车，脚本同时用 `adb shell log -t CRAB-MARK`
+把它写进 logcat，这样人做了什么与 tick 断口在同一条时间线上。什么都不敲也能判。
+
+`probe.sh` 一并改：现在 `mktemp` + `trap rm` 那份 logcat 改为留进 `runs/<时间>-probe/`，连同那十六行，
+十六行的原文不再靠手抄。已改：`logcat.txt`、`crab.txt`、`env.txt`、`result.txt`，stdout 仍只打那十六行。
+
+### 和已定的规矩怎么对上
+
+- **ADR-0005 不动**：十六行仍是唯一的运行记录形式。`runs/` 是证据原件，不是记录；本文件照样摘原文，
+  并注明摘自哪个 `runs/` 目录
+- **ADR-0001 不动**：「不代按」说的是页面上的按钮与对话框，那些仍由人按。脚本只代做 adb 层面的准备与收尾
+- **`runs/` 不提交**，落地时加进 `.gitignore`：每秒一行 tick，体积大，还带设备信息。要留的是摘进本文件的那几行
+- **两处检出**：在工作机上跑，把那个 `.tar.gz` 带回这处放进 `runs/` 就行，不用再贴终端输出
+
+### 落地顺序与怎么算落地
+
+1. `env` + `background`：最便宜，而且正好把切后台那格的「原始输出待补」补上
+2. `probe.sh` 落盘
+3. `destroy` / `back-at-root` / `font-scale`
+4. `render-gone` / `missing-entry`：这两个脚本要改设备状态或挪仓库文件，退出时的还原最容易写漏，放最后
+
+`.sh` 不在任何自动化检查的覆盖范围里（见 [`docs/PITFALLS.md`](docs/PITFALLS.md) 的「假绿的边界」），
+`check.sh` 绿说明不了它能用。**每个场景都在工作机上真跑出一个 `runs/` 目录、AI 能从里面判出结论，
+才算落地。** 落地之后 RUNBOOK 各节的手敲命令换成对应场景的一条命令。
+
+**现状（2026-09-24）**：八个场景加 `multi-instance` 都写了，`probe.sh` 落盘也改了，只在一个假 `adb` 上
+空跑过流程：场景分发、备注转义、`shot`、Ctrl-C / TERM 之后改回 `font_scale`、`missing-entry` 安装失败时
+放回入口页。**一个都没在工作机上真跑，按上面的定义都不算落地**，RUNBOOK 的手敲命令先留着。
 
 ## 对账：欠着的几笔，照实记
 

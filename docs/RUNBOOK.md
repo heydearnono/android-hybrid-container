@@ -24,6 +24,11 @@ export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 图标发的请求一致。只写 `-n` 的话，之后按 Home 再点桌面图标会多开一个 `MainActivity`，页面重载、tick
 从 0 起，切后台那一格就看不出断口了（见 [`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」）。
 
+**二到七各有一条 `./scripts/capture.sh <场景>`**：logcat 从开跑持续落进 `runs/`，跑完把
+`runs/<时间>-<场景>.tar.gz` 交出来，不用再贴终端输出。场景名见 `./scripts/capture.sh --help`。它**还没在
+工作机上真跑过**（`TASKS.md` 的「后续 · 模拟器那一半的日志自动落盘」），所以下面各节的手敲命令先留着，
+两条路任选。
+
 ## 一、跟着 `scripts/probe.sh` 走的六处
 
 `./scripts/probe.sh` 会装好、清日志、起应用，然后**停下来等你**。它不代按：按完再回车，它才去回读
@@ -42,6 +47,8 @@ logcat 并打那固定十六行。
 回链，唯一的回法就是返回键，所以这两条一起判。
 
 ## 二、必须单独跑的一处：删掉入口文件
+
+脚本版：`./scripts/capture.sh missing-entry`（挪走、绕过 `check.sh` 装、退出时放回并重装）。
 
 `ProbeContractAlignmentTest` 要求 `assets/probe/index.html` 在，而 `probe.sh` 装之前会跑
 `./scripts/check.sh`——所以这一遍**不能跟着 `probe.sh` 走**，得手动装，跑完把文件放回去。
@@ -71,6 +78,8 @@ mv /tmp/crab-index.html app/src/main/assets/probe/index.html
 
 ## 三、渲染进程终止（两次）
 
+脚本版：`./scripts/capture.sh render-gone`（先 `adb root`，拒绝就落盘原文结束）。
+
 这条要的是「第一次换 WebView 悄悄恢复、第二次进错误界面」，所以**同一次运行里要杀两次**。
 
 **顺序是先 `adb root`**：拿不到就别往下走了——带 Google Play 的镜像一律拒绝它，那种镜像上这一格在
@@ -86,6 +95,9 @@ adb shell ps -A | grep net.xiaoluzhu.crab
 adb shell kill -9 <renderer-pid>
 ```
 
+`grep` 不到的话：渲染进程名也可能以 WebView 的包名开头（`…webview:sandboxed_process…`），那就在起应用
+前后各 `adb shell ps -A | grep sandboxed_process` 一次，多出来的那个是本应用的。`capture.sh` 就是这么找的。
+
 看什么：
 
 - 第一次：一行 `CRAB-ERR render-gone 1`，页面**自己重新加载**回探针页（换了一个新 WebView）
@@ -96,6 +108,8 @@ adb shell kill -9 <renderer-pid>
 「没崩过」当通过。
 
 ## 四、切后台、销毁、在入口页直接后退
+
+脚本版：`background` / `destroy` / `back-at-root`（含「紧接上一格」那行）/ `multi-instance`，一格一条。
 
 | 做什么 | 看什么 |
 | --- | --- |
@@ -128,7 +142,7 @@ adb shell dumpsys activity activities | grep -E 'Hist #.*net.xiaoluzhu.crab'
 
 ## 五、开机读一行：`DOCUMENT_START_SCRIPT` 与整串 UA
 
-**最便宜的一格，装上起一次就有。** 两条都在 `CRAB-ENV` 这个前缀下，一次 grep 全拿到：
+**最便宜的一格，装上起一次就有。** 两条都在 `CRAB-ENV` 这个前缀下，一次 grep 全拿到（脚本版：`./scripts/capture.sh env`）：
 
 ```bash
 adb shell am force-stop net.xiaoluzhu.crab
@@ -159,6 +173,7 @@ adb logcat -d | grep CRAB-ENV
 ## 六、文字跟不跟随系统字号
 
 `WebSettings.textZoom = 100` 是取值表里的一项，要看的是它有没有把系统字号那条路一并按住。
+脚本版：`./scripts/capture.sh font-scale`（退出时一律改回 1.00，含 Ctrl-C）。
 
 ```bash
 # 也可以走 设置 → 显示 → 字体大小，拖到最大
@@ -201,6 +216,8 @@ B 怎么造（**跑完删掉，一行都不留**）：
 | 文件访问 | **按 pro 的观察法分辨不出，待 pro 议**。`setAllowFileAccess` 管不到 `file:///android_asset`，而页面在 `https://` 上、`fetch` 本来就拿不到 `file://`，所以开与关都是「读不到」。仍照原样 `fetch('file:///android_asset/probe/probe.png')` 一次、把报错原文抄下来：那能坐实后一半，它现在还是按 Chromium 的行为推的。细节见 [`待回流-pro.md`](待回流-pro.md) 第 4 条 |
 | 有声媒体自动播放 | 一个有声的 `<video autoplay>`，看它自己播不播 |
 
+临时代码装上之后用 `./scripts/capture.sh free` 录（它什么都不代做）。
+
 这一格与其余六格的区别：**其余六格是「跑一遍就有」，这一格要先改代码。** 所以它天然最后做，而且做完
 必须确认工作区干净（`git status` 里没有 `MainActivity`、`:core:webview`、`AndroidManifest.xml` 与探针页的
 残留），否则临时代码会跟着提交进去。B 要挂容器那个私有的 `assetLoader` 才加载得了承载 origin，所以临时
@@ -214,6 +231,19 @@ B 怎么造（**跑完删掉，一行都不留**）：
 十六条之外的观察（「二」到「七」）不进那十六行，结论也写进 `TASKS.md`，写清是哪一格、哪一遍看到的。
 **造不出来的照实写「造不出来」**：没触发过的恢复路径与写错了的恢复路径在日志上长得一模一样，
 「一直没崩过」不是通过。
+
+走手敲那条路时每格贴回什么（**原样贴，别只贴结论**；每格开始前先 `adb logcat -c`）。走 `capture.sh`
+的话交那个 `.tar.gz` 就行，这些都在里面：
+
+| 哪一格 | 贴回 |
+| --- | --- |
+| 四 · 切后台 | `adb logcat -d \| grep 'CRAB-ENV tick'` 全部，外加声音停没停一句 |
+| 四 · 划掉 / 入口页后退 / 后退之后再进第二页 | 每格一句看到了什么；划掉那格再贴 `adb logcat -d \| grep -iE 'FATAL\|AndroidRuntime\|chromium'`，空的也照贴 |
+| 四 · 多实例 | 两遍各一段 `dumpsys` 的 grep 输出 |
+| 六 | 字号 1.30 下探针页文字变没变、双指撑开放没放大，各一句；截图更好。看完确认 `font_scale` 已改回 1.00 |
+| 三 | `adb root` 那一行的原文；拿到 root 的话再加 `ps -A \| grep` 与每次杀完的 `adb logcat -d \| grep CRAB-ERR` |
+| 二 | `adb logcat -d \| grep CRAB-ERR`，外加屏幕上看到的是什么、点「重试」之后是什么 |
+| 七 | 七项各一句（立即生效 / 重载后生效 / 完全不生效 / 改动触发重载），`file://` 那次 `fetch` 的报错原文，跑完之后的 `git status` |
 
 平台声明与还成立的技术约束攒进 [`待回流-pro.md`](待回流-pro.md) 等着回流 pro；工具链与环境的坑落
 [`PITFALLS.md`](PITFALLS.md)，**不回流**。
