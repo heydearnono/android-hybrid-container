@@ -10,9 +10,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Crab">
 
+        <!--
+          宿主单实例（pro M4 的落点表）：再次启动一律回到已有的这个容器，新请求走 onNewIntent。
+          默认的 standard 下，从桌面图标之外的入口（am start -n、通知、深链接）进来过一次，再点图标会被
+          Intent.filterEquals 判成另一个请求、在原任务上叠一个新实例，页面重载。
+          取值照 M3 的规矩显式写，不靠默认值；HostSingleInstanceTest 盯着这一格。
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Crab">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
