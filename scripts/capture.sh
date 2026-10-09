@@ -6,7 +6,7 @@
 #   background      切后台：播放声音 → Home → 十秒 → 从最近任务切回（RUNBOOK 四）
 #   destroy         最近任务里划掉，再从图标起（RUNBOOK 四）
 #   back-at-root    入口页直接后退，再回来进第二页后退（RUNBOOK 四）
-#   multi-instance  只带 -n 与带 MAIN + LAUNCHER 各起一遍，再点图标（RUNBOOK 四）
+#   multi-instance  再次启动：只带 -n 与带 MAIN + LAUNCHER 各起一遍，再点图标（RUNBOOK 四）
 #   font-scale      font_scale 设 1.30 再起；退出时一律改回 1.00（RUNBOOK 六）
 #   render-gone     先 adb root，再杀渲染进程两次（RUNBOOK 三）
 #   missing-entry   挪走入口页、绕过 check.sh 装；退出时放回并重装（RUNBOOK 二）
@@ -291,7 +291,7 @@ scene_back_at_root() {
 == 入口页后退（RUNBOOK 四）==
   1. 等探针页出来，不要去第二页
   2. 按系统返回键：应当退到桌面
-  3. 点桌面图标回来
+  3. 点桌面图标回来：应当是原来那个页面（tick 接着走），logcat 多一行 CRAB-ENV onNewIntent
   4. 点「跳到第二页」，按系统返回键：应当回到入口页。直接退到桌面也照实敲一句备注
 EOF
   notes_until_quit
@@ -299,21 +299,27 @@ EOF
 }
 
 multi_instance_pass() {
-  local label="$1"
+  local label="$1" before after
   shift
   launch "$@"
+  before="$(count_log 'CRAB-ENV onNewIntent')"
   step "[$label] 等页面出来后按 Home，再点桌面图标；页面停稳后回车" || return 1
   adb_out dumpsys activity activities >"$RUN_DIR/activities-$label.txt"
-  echo "[$label] 本应用的 Hist 行：" | checklist
-  grep -E 'Hist #' "$RUN_DIR/activities-$label.txt" | grep -F "$APP_ID" | checklist || true
+  after="$(count_log 'CRAB-ENV onNewIntent')"
+  {
+    echo "[$label] 本应用的 Hist 行（单实例下应当只有一条）："
+    grep -E 'Hist #' "$RUN_DIR/activities-$label.txt" | grep -F "$APP_ID" || true
+    echo "[$label] 点图标之后新增的 CRAB-ENV onNewIntent：$((${after:-0} - ${before:-0})) 行（应当是 1）"
+  } | checklist
 }
 
 scene_multi_instance() {
   start_capture
   checklist <<'EOF'
 
-== 多实例（RUNBOOK 四）==
-  第一遍只写 -n，第二遍带 MAIN + LAUNCHER，其余相同。每遍脚本起应用，人按 Home 再点图标
+== 再次启动 · 单实例（RUNBOOK 四）==
+  第一遍只写 -n（桌面图标之外的入口），第二遍带 MAIN + LAUNCHER，其余相同。每遍脚本起应用，人按 Home
+  再点图标。两遍都应当：只有一条 Hist、tick 接着走不从 1 起、多一行 CRAB-ENV onNewIntent
 EOF
   multi_instance_pass 1-only-n -n "$ACTIVITY" || return 0
   multi_instance_pass 2-like-icon -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
@@ -430,7 +436,7 @@ scene_free() {
   checklist <<'EOF'
 
 == 只录（free）==
-  脚本什么都不代做。应用要自己起：点桌面图标
+  脚本什么都不代做。应用要自己起：点桌面图标；实例 B 用另一个终端里的 b_start / b（RUNBOOK 七）
 EOF
   notes_until_quit
 }

@@ -10,30 +10,6 @@ pro。工具链咬合、环境自检、构建陷阱一律不回流，落 [`PITFA
 
 ## 待回流
 
-### 1. 关 Safe Browsing 的现行手段是框架那个 setter，不是 compat、也不是 manifest
-
-pro 的 M2 把「关 Safe Browsing 的正确手段」列作待核。三条都是在本机读 SDK 与 aar 读出来的，**不需要
-模拟器**：
-
-- `WebSettings.setSafeBrowsingEnabled(boolean)` 在 `platforms/android-37.0/android-stubs-src.jar` 里
-  **没有 `@Deprecated`**。同一个文件里 `setPluginState` / `setLightTouchEnabled` / `getForceDark` 都带着
-  这个注解，所以「没带」是有意义的信号，不是 stub 把注解洗掉了
-- `androidx.webkit.WebSettingsCompat.setSafeBrowsingEnabled`（1.17.0）也在、也没弃用，但 javap 读它的
-  字节码：先问 `ApiFeature$O.isSupportedByFramework()`，成立就直接转给框架那个 setter。**`minSdk = 37`
-  下这个分支恒真**，走 compat 只是多一次判断
-- manifest 的 `android.webkit.WebView.EnableSafeBrowsing` meta-data 是**应用级**开关，且
-  `android.jar` 里一次都不出现（由 WebView provider 读，不在 SDK stub 里），本机核不了。形状也与
-  「显式设置 + 取值进单测」不同：它没有可进单测的取值
-
-本端的处置：用框架的 setter，不引 compat，不取 manifest 那一路。
-
-### 2. Safe Browsing 这一项在 Android 上没有观察面
-
-要看见它得有一次被拦下来，而承载 origin 落在 `.invalid` 下、容器一条真实网络请求都不发，拦不到东西。
-所以这一项与 SSL 那条同类：取值有单测，**写入只剩走查**。
-
-回流的意思是让 pro 的 M2/M5 能照实记「该端该条未验证」，而不是留在「待核」。
-
 ### 3. `WebSettings.textZoom` 与系统字号的关系（还没读到，占位）
 
 pro 的 M3 要求看一次「文字跟不跟随系统字号」。取法写在 [`RUNBOOK.md`](RUNBOOK.md) 的「六」，
@@ -45,58 +21,41 @@ pro 的 M3 要求看一次「文字跟不跟随系统字号」。取法写在 [`
 
 这一格读到之前不回流，留个位置免得忘。
 
-### 4. 差异表「文件访问」那一行，按 pro 定的观察法在 Android 上分辨不出档位
+### 6. Android 12 起，入口页上后退是把任务挪到后台，容器并不销毁
 
-pro 的 M5 差异表对这一行定的观察法是「`fetch` 一个 `file://` URL 能否读到」。本端照它写的临时观察面是
-`fetch('file:///android_asset/probe/probe.png')`，两处都挡着它：
+pro M4 那一格写的是「在入口页直接后退，交宿主关掉容器，不留在空白页」。本端到底时把返回键交回系统默认
+行为，而 `sdk/sources/android-36.1/android/app/Activity.java` 里 `onBackPressed` 的 javadoc 原文：
 
-- **`setAllowFileAccess` 管不到 `android_asset`。** `sdk/sources/android-36.1` 里的 javadoc 原文：
-  「this enables or disables file system access only. Assets and resources are still accessible using
-  file:///android_asset and file:///android_res」。本机读到的，不需要模拟器
-- **页面在 `https://` 承载 origin 上，`fetch` 本来就拿不到 `file://`。** Chromium 的 `fetch` 不认
-  `file:` scheme。这一半**还没在模拟器上看过**，是按 Chromium 的行为推的
+> Starting with platform version S, for activities that are the root activity of the task and also
+> declare an IntentFilter with ACTION_MAIN and CATEGORY_LAUNCHER in the manifest, the current activity
+> and its task will be moved to the back of the activity stack instead of being finished.
 
-两样叠起来，B 实例里这一项开与关都是「读不到」，四档里哪一档都填不进去。换成别的观察法（比如原生侧直接
-`loadUrl` 一个 `file:///data/…` 路径）改的是三端共同的观察法，按 `CLAUDE.md` 的第三条纪律**不在本仓
-自决**。在 pro 议定之前，`TASKS.md` 差异表的这一格照实写「按 pro 的观察法分辨不出，待 pro 议」。
+`MainActivity` 正是带 `MAIN` + `LAUNCHER` 的任务根，所以用户看到的是退回桌面、不留空白页，但容器（连同
+`WebView` 与页面里的 JS 状态）还活着；再点图标，`singleTask` 之下回来的是同一个容器、停在入口页，走
+`onNewIntent`，没有 `onCreate`。
 
-### 5. 从别的入口进来过一次，再点桌面图标会多开一个容器宿主
+要 pro 看的只有一件：**「关掉容器」包不包括「挪到后台、实例保留」**。包括则本端不用动；不包括则要宿主
+自己 `finish()`，那就与平台默认行为反着来，而且和「再次启动回到原容器、不重载」那条一起看才知道该怎么取。
+本端不自决，现在按平台默认走。javadoc 是本机读的；设备上的表现排在工作机那一遍里（RUNBOOK「四」
+`back-at-root`），**还没看过**。
 
-要 pro 议的问题：**容器宿主是不是单实例？**
+本端顺带按出口 1 改了一处实现：原先到底时 `remove()` 掉返回键回调，实例活下来之后回调不会再挂上，第二页
+上的返回键会直接退到桌面；现在只在分发那一下暂时关掉（见 `MainActivity.backCallback`）。
 
-实测（2026-09-24，工作机 API 37 AVD）：
+## 已回流（922ffd3 那一批，四条）
 
-- `adb shell am start -n …/.MainActivity` 启动 → 按 Home → 点桌面图标：新建了一个 `MainActivity`，
-  页面重新加载，tick 从 0 开始
-- 同样的前提下改从最近任务切回：回到原来那个实例，tick 衔接
+pro `922ffd3`（「收 and 的三条待回流：Safe Browsing 进 M2、文件访问改原生导航观察、宿主单实例进 M4」）收了
+原先的第 1、2、4、5 条，编号照旧空着，免得会话记录里的引用对不上：
 
-平台事实（本机读源码，不需要模拟器）：系统拿 `Intent.filterEquals` 比这次的启动请求与任务的根请求。
-`sdk/sources/android-36.1/android/content/Intent.java` 第 11949–11962 行，比的是 action、data、type、
-identifier、package、component、categories 七项，**不比 extras 与 flags**。`am start -n` 只填了
-component；桌面图标发的是 `MAIN` + `LAUNCHER` + component，两者不等。
+| 原编号 | 事实 | 进了 pro 的哪一份 |
+| --- | --- | --- |
+| 1 | 关 Safe Browsing 的现行手段是框架的 `setSafeBrowsingEnabled`，不走 compat、不取 manifest | M2 的要求与「平台事实」，「要试出来的」里那条划掉 |
+| 2 | Safe Browsing 在 Android 上没有观察面 | M2 的要求（取值有单测、写入只剩走查），M5「不许糊过去」加一条 |
+| 4 | 差异表文件访问那一行按 `fetch` 一个 `file://` 分辨不出档位；`setAllowFileAccess` 管不到 `android_asset` | M3：观察法改成原生侧主帧导航到私有目录里的已知文件（三处要求），javadoc 那句进「平台事实」，iOS 那格记不适用 |
+| 5 | 从别的入口进来过一次，再点图标会多开一个容器 | M4：「宿主」要求、单实例落点表、「故意做坏事」第十二行、「要试出来的」最后一行，现象进「平台事实」 |
 
-**推测**（SDK 源码里没有，按现象推的）：对不上之后，因为 `MainActivity` 是默认的 `standard` 启动模式，
-系统在原任务上叠了一个新实例。「叠新实例」这一段是系统服务端的逻辑，不在 SDK 里。
-
-真实用户会不会碰到：现在只有桌面图标一个入口，所以还碰不到。但只要有下面任一入口，用户从那里进来、
-按 Home、再点图标，就会多开一个容器：
-
-- 推送通知的 `PendingIntent`（带自定义 action 或 data）
-- 深链接
-- 别的应用显式启动 `MainActivity`（它是 `exported="true"`）
-
-代价：多一个 `CrabContainer` 与 `WebView`，可能还多一个渲染进程；页面重载；两个实例 JS 内存里的状态
-分叉。
-
-修法候选两个，**都不在本仓定**，本仓不改 `launchMode`、也不改 `MainActivity`：
-
-1. `launchMode` 设 `singleTop` 或 `singleTask`，复用实例、新请求走 `onNewIntent`
-2. `onCreate` 里判「不是任务根，且请求是 `MAIN` + `LAUNCHER`」就 `finish()`
-
-鸿蒙的 UIAbility 启动模式与 iOS 的多 scene 都有对应机制，所以这是三端问题，不是 Android 一端的。
-
-本端测法那一侧已经按出口 1 改了：`scripts/probe.sh` 与 RUNBOOK 的 `am start` 都带上 `MAIN` + `LAUNCHER`，
-见 [`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」。
+本端随之做的：第 5 条落成 `launchMode = singleTask` + `onNewIntent`（`HostSingleInstanceTest`）；第 4 条落成
+RUNBOOK「七」的文件访问那一格；第 1、2 条代码早已是这个形状，`TASKS.md` 里那格改记「只剩走查」。
 
 ## 已回流（`e857625..287c92d` 那一批，四条）
 
@@ -116,3 +75,4 @@ component；桌面图标发的是 `MAIN` + `LAUNCHER` + component，两者不等
 - **端内自定的命名**：`CRAB-ERR` 的三个场景词、探针页的 `tone.wav` 与 tick。pro 只定了日志的形状，
   这些是本端为了有观察面加的，记在 `TASKS.md` 的「端内自定的部分」
 - **`CrabContainer` 里那个 `CRAB-ENV` 诊断 `init` 块**：一次性的，读到值就可以删，不是契约
+- **`MainActivity.onNewIntent` 里那行 `CRAB-ENV onNewIntent`**：同上，是「再次启动」那格的诊断

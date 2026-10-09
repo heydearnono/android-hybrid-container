@@ -6,7 +6,8 @@
 前置：一台 **API 37** 的模拟器（`minSdk = 37`）。
 
 **「一」那六处已经在工作机上做过一遍**（2026-09-21，十六行齐，原文在 `TASKS.md` 的运行记录那节）。
-**「五」也做完了**（2026-09-23，两行原文在 `TASKS.md` 的「M3 · 注入走哪条路」）。其余几处做到哪以
+**「五」也做完了**（2026-09-23，两行原文在 `TASKS.md` 的「M3 · 注入走哪条路」）。之后宿主改了
+`launchMode` 与返回键，所以「一」要回归一遍，顺序在「零」。其余几处做到哪以
 `TASKS.md` 为准，这里不记进度——`~/Desktop/github` 这处检出没有 `cmdline-tools`、没有 system-image、
 没有 AVD，两处检出的差别见 [`PITFALLS.md`](PITFALLS.md) 的「环境」。别把 `TASKS.md` 里的「已落地」读成
 「过了」。
@@ -21,13 +22,38 @@ export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 ```
 
 **命令行起应用一律带 `-a android.intent.action.MAIN -c android.intent.category.LAUNCHER`**，形状与桌面
-图标发的请求一致。只写 `-n` 的话，之后按 Home 再点桌面图标会多开一个 `MainActivity`，页面重载、tick
-从 0 起，切后台那一格就看不出断口了（见 [`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」）。
+图标发的请求一致。宿主改成 `singleTask` 之后，只写 `-n` 照理不会再多开一个 `MainActivity`（原先会，见
+[`PITFALLS.md`](PITFALLS.md) 的「模拟器与 `probe.sh`」），但「照理」要等「四 · 再次启动」那格跑出来才算数，
+所以别处照旧带上。**只有那一格故意只写 `-n`。**
 
 **二到七各有一条 `./scripts/capture.sh <场景>`**：logcat 从开跑持续落进 `runs/`，跑完把
 `runs/<时间>-<场景>.tar.gz` 交出来，不用再贴终端输出。场景名见 `./scripts/capture.sh --help`。它**还没在
 工作机上真跑过**（`TASKS.md` 的「后续 · 模拟器那一半的日志自动落盘」），所以下面各节的手敲命令先留着，
 两条路任选。
+
+## 零、工作机上的跑法（按这个顺序，每格一条命令）
+
+前提：工作机的检出已经 `git pull` 到本处推上去的那个提交（工作机推不了远端，所以拿 bundle 拉，**只 pull、
+不在那边推**；做法见 [`PITFALLS.md`](PITFALLS.md) 的「环境」）。开跑之前比一次 `git rev-parse HEAD`，与
+本处的 `main` 不一致就先别跑——后加的 `launchMode` 与 `onNewIntent` 那行日志在旧 APK 上打不出来。
+
+| # | 命令 | 对应哪一节 | 看完要回答什么 |
+| --- | --- | --- | --- |
+| 1 | `./scripts/capture.sh --install env` | 五 | `DOCUMENT_START_SCRIPT` 与整串 UA 两行还在、与 09-23 一致；`--install` 顺带把带 `singleTask` 的新包装上 |
+| 2 | `./scripts/capture.sh background` | 四 · 切后台 | 声音停没停、tick 时间戳断口有多长（补上 09-24 那格的原始输出） |
+| 3 | `./scripts/probe.sh` | 一 | **回归**：改了 `launchMode` 与返回键之后，十六行与 09-21 那一遍逐行相同、退出码 0 |
+| 4 | `./scripts/capture.sh multi-instance` | 四 · 再次启动 | 两遍都只有一条 `Hist`、tick 不从 1 起、各多一行 `CRAB-ENV onNewIntent` |
+| 5 | `./scripts/capture.sh destroy` | 四 · 划掉 | 不崩、没有 WebView 相关的异常栈 |
+| 6 | `./scripts/capture.sh back-at-root` | 四 · 入口页后退 + 紧接那一格 | 入口页后退退到桌面；点图标回来是原页面；第二页上后退回到入口页 |
+| 7 | `./scripts/capture.sh font-scale` | 六 | 字号 1.30 下页面文字变没变、双指撑开放没放大；结束后 `font_scale` 回到 1.00 |
+| 8 | `./scripts/capture.sh render-gone` | 三 | `adb root` 拿不拿得到；拿到了就是两次杀进程各自的结果 |
+| 9 | `./scripts/capture.sh missing-entry` | 二 | 错误界面上屏、一行 `CRAB-ERR load 404`；结束后入口页已放回、重装后探针页回来 |
+| 10 | `git apply docs/实例B.patch` → `./scripts/capture.sh --install free`（另开终端照「七」操作）→ `git apply -R docs/实例B.patch` → `./gradlew --quiet :app:installDebug` | 七 | 差异表七格各落哪一档；跑完 `git status` 干净、设备上装回的是不带 B 的包 |
+
+顺序的理由：1、2 最便宜，先确认新包装上了、日志通道还在；3 是本轮改动的回归，红了后面都不用跑；8、9
+要改设备状态或挪仓库文件，还原最容易漏，放后面；10 要先打临时补丁，天然最后。
+
+做完把 `runs/*.tar.gz` 全部带回本处放进 `runs/`，判读与摘原文进 `TASKS.md` 由 AI 做。
 
 ## 一、跟着 `scripts/probe.sh` 走的六处
 
@@ -107,7 +133,7 @@ adb shell kill -9 <renderer-pid>
 `adb root` 拿不到 root 时（Google Play 镜像）这一处做不了，`TASKS.md` 里照实写「造不出来」，不要拿
 「没崩过」当通过。
 
-## 四、切后台、销毁、在入口页直接后退
+## 四、切后台、销毁、在入口页直接后退、再次启动
 
 脚本版：`background` / `destroy` / `back-at-root`（含「紧接上一格」那行）/ `multi-instance`，一格一条。
 
@@ -115,16 +141,25 @@ adb shell kill -9 <renderer-pid>
 | --- | --- |
 | 探针页上点「播放声音」，按 Home 键等十秒再回来 | 切出去后声音**停**、页面上的 `tick` 数**不涨**；回来后继续。`adb logcat -d \| grep 'CRAB-ENV tick'` 的时间戳里应当有一段十秒左右的断口。声音一直响或 tick 一直涨 = `onPause()` / `pauseTimers()` 没生效 |
 | 在最近任务里划掉应用，再重新起 | 不崩、logcat 里没有 WebView 相关的异常栈。容器销毁时是**先从视图树摘除再 `destroy()`**，顺序反了会崩在渲染层 |
-| 在入口页（没去过第二页时）直接按系统返回键 | 应用退到桌面 / 结束，**不是**卡在页面上什么都不发生。返回键到底之后交回宿主的默认行为 |
-| 紧接上一格：点桌面图标回来，点「跳到第二页」，在第二页按系统返回键 | 回到入口页，**不是**直接退到桌面。上一格那一下，Android 12 起只把任务挪到后台、不销毁 `MainActivity`（`Activity.onBackPressed` 的 javadoc），而 `backCallback` 在那一步已经 `remove()`，回来不会再挂上——按代码推，这一格会直接退到桌面，**没跑过**。退到桌面就照实记下，修法另议 |
+| 在入口页（没去过第二页时）直接按系统返回键 | 应用退到桌面，**不是**卡在页面上什么都不发生。Android 12 起这一下是把任务挪到后台、`MainActivity` 不销毁（`Activity.onBackPressed` 的 javadoc），所以容器其实还活着 |
+| 紧接上一格：点桌面图标回来，点「跳到第二页」，在第二页按系统返回键 | 回来的是**原来那个页面**（tick 接着走、logcat 多一行 `CRAB-ENV onNewIntent`），第二页上后退回到入口页，**不是**直接退到桌面 |
+
+**`singleTask` 改了最后一格的什么。** 原先的写法在入口页后退时 `remove()` 掉了 `backCallback`，而上一格
+之后实例还活着、回来不再走 `onCreate`，回调也就不会再挂上——第二页上的返回键直接退到桌面。`standard`
+下踩不踩取决于怎么回来（按 09-24 多开那次的现象推：只写 `-n` 起过的话点图标会新建实例、重新 `onCreate`，
+碰巧躲过去；带 `MAIN` + `LAUNCHER` 起的则是原任务提到前台，照样踩）；`singleTask` 之下回来的**一定**是原
+实例，所以这一格从「可能踩」变成「必踩」。本端已按出口 1 改掉：到底时只把回调暂时关掉、分发完马上打开，不再
+`remove()`。**预期因此是「回到入口页」**；还是退到桌面就是这处修法没生效，照实记。
 
 切后台那一格与十六条断言无关，是 pro 单独要求人工看一次的。声音（`tone.wav`）与每秒 tick 是端内给它
 加的观察面——不给点声音、不给个在走的数，「停没停」根本看不出来。
 
-### 多实例：换一种请求起应用，再点图标
+### 再次启动：换一个入口起应用，再点图标
 
-对应 [`待回流-pro.md`](待回流-pro.md) 第 5 条，把那里「叠新实例」的推测换成实测。**这是全篇唯一故意只写
-`-n` 的地方**，跑两遍对照：
+pro M4「故意做坏事」第十二行：从桌面图标之外的入口启动一次，回桌面，再点桌面图标，要回到原来那个容器、
+页面不重载。Android 的落点是 `launchMode = singleTask`，再次启动走 `onNewIntent`（pro M4 的落点表）。
+「别的入口」用 `am start -n`（pro「要试出来的」最后一行），**这是全篇唯一故意只写 `-n` 的地方**；第二遍
+换成带 `MAIN` + `LAUNCHER` 的请求当对照：
 
 ```bash
 # 第一遍：只写 -n
@@ -133,12 +168,18 @@ adb shell am force-stop net.xiaoluzhu.crab
 adb shell am start -n net.xiaoluzhu.crab/net.xiaoluzhu.crab.MainActivity
 # 按 Home，再点桌面图标，然后：
 adb shell dumpsys activity activities | grep -E 'Hist #.*net.xiaoluzhu.crab'
+adb logcat -d | grep 'CRAB-ENV onNewIntent'
 
 # 第二遍：换成带 MAIN + LAUNCHER 的那条 am start，其余相同
 ```
 
-看什么：第一遍有**两条** `MainActivity` 的 `Hist`，行尾的 `t<数字>` 相同（同一个任务）；第二遍只有一条。
+看什么：**两遍都只有一条** `MainActivity` 的 `Hist`；点图标之后多一行 `CRAB-ENV onNewIntent Intent { … }`
+（带 `FLAG_ACTIVITY_BROUGHT_TO_FRONT` 的话那段 flags 里能看见），页面上的 tick 接着走、不从 1 起。
+改之前（`standard`）实测第一遍是两条 `Hist`、tick 从 0 起，所以第一遍是这格真正要看的那一遍。
 `dumpsys` 的格式随版本变，grep 不到就去掉过滤、把 `net.xiaoluzhu.crab` 附近那段原样贴回来。
+
+`CRAB-ENV onNewIntent` 那一行是诊断不是契约，前缀与 `CrabContainer` 那行 `CRAB-ENV` 同理写成字面量。新
+请求带来的内容怎么处理 pro 留给 FE 接入时定，所以 `onNewIntent` 里除了这一行什么都不做。
 
 ## 五、开机读一行：`DOCUMENT_START_SCRIPT` 与整串 UA
 
@@ -199,29 +240,91 @@ pro 的做法是两个实例：A 加载前就设成目标值（当基线），B 
 改动是立即生效 / 重载后生效 / 完全不生效 / 还是改动本身触发了一次重载。**A 就是现在的容器**
 （`applyCrabSpec` 在 `createWebView()` 里一次写完），所以要临时造的只有 B。
 
-B 怎么造（**跑完删掉，一行都不留**）：
+### B 是一份现成的临时补丁，跑完反向打掉
 
-1. 在 `MainActivity` 里加第二个 `WebView`（或加一个按钮换掉现有那个），加载前逐项设成相反值：
-   `javaScriptEnabled = false`、`domStorageEnabled = false`、`mixedContentMode = MIXED_CONTENT_ALWAYS_ALLOW`、
-   `allowFileAccess = true`、`mediaPlaybackRequiresUserGesture = false`、`setSupportZoom(true)`、
-   UA 不装饰
-2. 加载入口页，等它跑完
-3. 逐项改成目标值，每改一项看一次，四档里选一档记进 `TASKS.md` 那张表
+B 写好了，在 [`实例B.patch`](实例B.patch)（本机编译、格式、lint 过过，**没在设备上跑过**）。它动三处，
+一处都不进提交：
 
-三项探针页里根本没有的观察面也得临时加（**一样跑完删掉**）：
-
-| 要看 | 临时加什么 |
+| 文件 | 加了什么 |
 | --- | --- |
-| 混合内容 | 一个 `http://` 子资源。模拟器上宿主机是 **`10.0.2.2`**，不是 `127.0.0.1`；随手起 `python3 -m http.server` 即可。**manifest 要临时加两样，跑完删掉**：`<uses-permission android:name="android.permission.INTERNET" />`，以及 `<application>` 上的 `android:usesCleartextTraffic="true"`。容器本来一条网络请求都不发，两样都没有；缺前一样请求发不出去，缺后一样 WebView 照样拦明文（`NetworkSecurityPolicy.isCleartextTrafficPermitted` 的 javadoc：WebView 对 targetSdk 26 起的应用遵守这个开关）。不加的话 `mixedContentMode` 设成什么都加载不到，会被误记成「完全不生效」 |
-| 文件访问 | **按 pro 的观察法分辨不出，待 pro 议**。`setAllowFileAccess` 管不到 `file:///android_asset`，而页面在 `https://` 上、`fetch` 本来就拿不到 `file://`，所以开与关都是「读不到」。仍照原样 `fetch('file:///android_asset/probe/probe.png')` 一次、把报错原文抄下来：那能坐实后一半，它现在还是按 Chromium 的行为推的。细节见 [`待回流-pro.md`](待回流-pro.md) 第 4 条 |
-| 有声媒体自动播放 | 一个有声的 `<video autoplay>`，看它自己播不播 |
+| `app/src/main/kotlin/…/InstanceB.kt`（新文件） | 冷启动带 `--es crab.b <项>` 时，那一项在首次加载**之前**设成相反值，其余照取值表；之后的动作经 `--es crab.b.cmd <动作>` 走 `onNewIntent` 进来。每一步打一行 `CRAB-ENV B …`，连同当时 `WebSettings` 的读回值 |
+| `MainActivity.kt` | 两行：`loadEntry()` 之前调 `InstanceB.beforeFirstLoad`，`onNewIntent` 里调 `InstanceB.onCommand` |
+| `AndroidManifest.xml` | `INTERNET` 权限与 `usesCleartextTraffic="true"`，混合内容那一项要真发一次 http 请求 |
 
-临时代码装上之后用 `./scripts/capture.sh free` 录（它什么都不代做）。
+```bash
+git apply docs/实例B.patch
+./scripts/capture.sh --install free        # 这个终端只录；装的是带 B 的包
 
-这一格与其余六格的区别：**其余六格是「跑一遍就有」，这一格要先改代码。** 所以它天然最后做，而且做完
-必须确认工作区干净（`git status` 里没有 `MainActivity`、`:core:webview`、`AndroidManifest.xml` 与探针页的
-残留），否则临时代码会跟着提交进去。B 要挂容器那个私有的 `assetLoader` 才加载得了承载 origin，所以临时
-代码多半会落到 `:core:webview`，不只是 `MainActivity`。
+# 另开一个终端，先注入环境（见文首），再定义两个函数：
+b_start() {  # 冷启动；带项名就是实例 B（该项取相反值），不带就是实例 A
+  adb shell am force-stop net.xiaoluzhu.crab
+  adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
+    -n net.xiaoluzhu.crab/.MainActivity ${1:+--es crab.b "$1"}
+}
+b() { adb shell am start -n net.xiaoluzhu.crab/.MainActivity --es crab.b.cmd "$1"; }
+
+# 跑完：
+git apply -R docs/实例B.patch && git status --short   # 应当是空的
+./gradlew --quiet :app:installDebug                    # 设备上装回不带 B 的包
+```
+
+宿主是 `singleTask`，所以 `b <动作>` 不会多开实例，落到的就是正在跑的那个 B。动作有五个：
+
+| 动作 | 做什么 |
+| --- | --- |
+| `probe` | 跑这一项的观察脚本（`evaluateJavascript`，不带用户手势） |
+| `target` | 把这一项改成目标值，不重载 |
+| `reload` | 重载当前页 |
+| `file` | 原生侧把主帧 `loadUrl` 到 `filesDir/crab-b.html` |
+| `entry` | 回探针页（走「重试」那条路：打不开的话容器在错误态，只 `loadUrl` 不会把界面切回来） |
+
+### 每一项的跑法（对上 pro 的三步）
+
+除文件访问外六项都是同一个序列：`b_start <项>` → 等页面停稳 → `b probe`（相反值下的表现，顺带确认观察面本身
+受这个开关管）→ `b target` → `b probe`（变了记「立即生效」）→ 没变就 `b reload` → `b probe`（变了记「重载后
+生效」，还没变记「完全不生效」）。`target` 刚一敲页面就自己重载了，记「改动本身触发重载」。
+
+| 项 | `<项>` | `probe` 看什么 |
+| --- | --- | --- |
+| JavaScript | `js` | `#env` 那一行变成 `B js ran`，logcat 一行 `CRAB-ENV B js ran`。**相反值下第一次 `probe` 若也打出来了**，说明 `evaluateJavascript` 不受这个开关管，这一格的观察面不成立，照实记、不硬填 |
+| DOM storage | `storage` | `CRAB-ENV B storage ok` 还是 `storage threw …` |
+| 混合内容 | `mixed` | `CRAB-ENV B mixed loaded` 还是 `mixed blocked`。先在工作机上起 `python3 -m http.server 8000 --directory app/src/main/assets/probe`，模拟器上宿主机是 **`10.0.2.2`**。manifest 那两样补丁里已经加了：缺 `INTERNET` 请求发不出去，缺 `usesCleartextTraffic` WebView 照样拦明文（`NetworkSecurityPolicy.isCleartextTrafficPermitted` 的 javadoc），设成什么都会被误记成「完全不生效」 |
+| 有声媒体自动播放 | `autoplay` | 新建一个有声的 `<video autoplay>`（`tone.wav`）：`CRAB-ENV B autoplay playing` 出没出来、两秒后 `paused=` 是什么，耳朵也听一下 |
+| 缩放 | `zoom` | 相反值是可缩放 + `textZoom = 200`：文字大小人眼看，两指撑开看放不放大，`CRAB-ENV B zoom scale=` 是 `visualViewport.scale` |
+| UA | `ua` | `CRAB-ENV B ua …` 的结尾有没有 `Crab/0.1.0`。相反值是系统 UA 原样 |
+
+`CRAB-ENV B start` / `after target` 两行带着 `WebSettings` 的读回值：那是「写进去了」的证据，不是「生效了」的
+证据，判档位只看 `probe` 那几行与屏幕。
+
+### 文件访问那一行：原生侧导航，不在页面里看
+
+pro 的 M3 改了这一行的观察法（922ffd3）：**原生侧把主帧导航到应用私有目录里一个已知的 `file://` 文件，
+看打不打得开**。原先「页面里 `fetch` 一个 `file://`」在 Android 上开关两档都读不到，那条不再跑。补丁照
+pro 那三处要求落：
+
+- **已知文件放在 `filesDir`。** `InstanceB.beforeFirstLoad` 每次启动都把 `crab-b.html`（标题与正文都带
+  `CRAB-B-FILE`，打开时自己打一行 `CRAB-ENV B file opened <URL>`）写进 `filesDir`。不放 `android_asset`：
+  `setAllowFileAccess` 管不到那里，放那里两档都打得开
+- **这次导航绕开闸门。** `file` 动作走原生 `loadUrl`，而 `shouldOverrideUrlLoading` 对应用自己 `loadUrl` 发起
+  的导航不回调（`WebViewClient` 的 javadoc 原文「this is not called for navigations which the app initiated
+  with `loadUrl()`」）。闸门没被问到，也就拦不了；证据是这一跳前后 `crab.txt` 里**没有** `CRAB-NAV` 行
+- **每次观察都是一次新的导航。** 看完 `b entry` 回探针页，再走下一步
+
+序列：
+
+1. **A 的基线**：`b_start`（不带项名）→ `b file`。目标值是关，应当**打不开**：屏幕上是「页面没能打开」、
+   一行 `CRAB-ERR load <码>`，码照抄。→ `b entry`
+2. **B**：`b_start file`（开着起）→ `b file`：应当打开了，屏幕上 `CRAB-B-FILE 打开了`、一行
+   `CRAB-ENV B file opened`。→ `b entry`
+3. `b target`（改成关，不重载）→ `b file`。打不开了记「立即生效」；还打得开就 `b entry` → `b reload` →
+   `b file`，打不开了记「重载后生效」，还打得开记「完全不生效」
+
+只翻 `allowFileAccess` 一项：另外三个文件与内容开关在取值表里同样是关，但主帧导航到 `file://` 只受这一项管。
+
+### 跑完
+
+工作区必须干净：`git apply -R` 之后 `git status --short` 是空的，否则临时代码会跟着提交进去；设备上要重装
+一次不带 B 的包，不然下一次 `probe.sh --no-install` 跑的是 B。
 
 ## 八、跑完之后
 
@@ -239,11 +342,11 @@ B 怎么造（**跑完删掉，一行都不留**）：
 | --- | --- |
 | 四 · 切后台 | `adb logcat -d \| grep 'CRAB-ENV tick'` 全部，外加声音停没停一句 |
 | 四 · 划掉 / 入口页后退 / 后退之后再进第二页 | 每格一句看到了什么；划掉那格再贴 `adb logcat -d \| grep -iE 'FATAL\|AndroidRuntime\|chromium'`，空的也照贴 |
-| 四 · 多实例 | 两遍各一段 `dumpsys` 的 grep 输出 |
+| 四 · 再次启动 | 两遍各一段 `dumpsys` 的 grep 输出，加 `adb logcat -d \| grep 'CRAB-ENV onNewIntent'` |
 | 六 | 字号 1.30 下探针页文字变没变、双指撑开放没放大，各一句；截图更好。看完确认 `font_scale` 已改回 1.00 |
 | 三 | `adb root` 那一行的原文；拿到 root 的话再加 `ps -A \| grep` 与每次杀完的 `adb logcat -d \| grep CRAB-ERR` |
 | 二 | `adb logcat -d \| grep CRAB-ERR`，外加屏幕上看到的是什么、点「重试」之后是什么 |
-| 七 | 七项各一句（立即生效 / 重载后生效 / 完全不生效 / 改动触发重载），`file://` 那次 `fetch` 的报错原文，跑完之后的 `git status` |
+| 七 | 七项各一句（立即生效 / 重载后生效 / 完全不生效 / 改动触发重载），`adb logcat -d \| grep -E 'CRAB-ENV B\|CRAB-ERR\|CRAB-NAV'`，跑完之后的 `git status` |
 
 平台声明与还成立的技术约束攒进 [`待回流-pro.md`](待回流-pro.md) 等着回流 pro；工具链与环境的坑落
 [`PITFALLS.md`](PITFALLS.md)，**不回流**。

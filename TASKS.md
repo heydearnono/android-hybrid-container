@@ -5,26 +5,25 @@ API、动哪个文件、哪条单测、现在是什么状态。
 
 ## 按的是 pro 的哪个版本
 
-- commit `bbe9be9`（「快照跟上推送状态：四个仓的 main 都与远端同点」），pro 工作区干净。**判据与
-  `287c92d`**（「收 and 调试成果：四条平台事实进 M3/M4、进度快照重生、交接文件暂存、README 加
-  「页面侧继承到什么」」）**那一份相同**，理由见本节最后一条
-- 上一版按的是 `e857625`。`e857625..287c92d` 一个提交逐行读过（6 个文件，+201/−7），**动到 Android 的
-  有三处**，都不改判据本身、只把要求写细：
-  - M3「要试出来的」那格加了一句：`DOCUMENT_START_SCRIPT` 要连 `WebViewCompat.getCurrentWebViewPackage()`
-    的内核版本一起打，且**明写「`inject-order` 绿不算这一格的答案」**——两条路都要求 `injected == 1`，
-    绿了认不出走的是原生注入还是兜底。落到本端就是下面「M3 · 注入走哪条路」那一格
-  - M4「能不能主动触发一次渲染进程终止」那格加了前提：带 Google Play 的镜像一律拒绝 `adb root`，
-    拒绝了这条在 Android 上整条不成立，退代码走查并在 M5 明写未验证
-  - M4「三端从命令行回读应用日志的路」那格记上 **Android 已成立**，靠日志判的那五条不退 `MANUAL`
-- 另外三处与本端判据无关：README 新增「页面侧继承到什么」（给 FE 的索引，本端不实现）、`开工.md` 加了
-  「pro 根上的 `交接-<代号>.md` 搬完即删」的规矩（本次照办，见下）、`进度.md` 是快照
-- **`e857625..287c92d` 收进 pro 的四条 Android 平台事实全部产自本端**（UA 缩减、`data:` iframe 起得来、
-  两个 file URL setter 已废弃、Google Play 镜像不可 root）。剩下还压在本仓等回流的见
-  [`docs/待回流-pro.md`](docs/待回流-pro.md)
-- `287c92d` 之后 pro 上又有五个提交（`723e15a..bbe9be9`），逐个读过，**一个都不动 Android 的判据**：
-  `723e15a` 删掉根上的 `交接-and.md`（那份中转的三块内容已经搬进本仓，见下面运行记录与
-  `docs/PITFALLS.md`）；`3e1bb73` / `8620920` 是 ios 交接文件的进与出；`3c57bd7` 只改 M1 里「iOS 的
-  bundle id 收不收下划线」那句依据，取值没动；`bbe9be9` 是 `进度.md` 快照
+- commit `922ffd3`（「收 and 的三条待回流：Safe Browsing 进 M2、文件访问改原生导航观察、宿主单实例进 M4」），
+  pro 工作区干净。README 与 `plan/` 五份重读过
+- 上一版按的是 `bbe9be9`。`bbe9be9..922ffd3` 共六个提交，**动 Android 判据的只有 `922ffd3` 一个**，四处：
+  - **M2 · Safe Browsing**：手段定成框架的 `setSafeBrowsingEnabled(false)`，不走 compat、不取 manifest；明写
+    没有观察面，「取值有单测、写入只剩走查」，M5「不许糊过去」加一条。本端代码本来就是这个形状，落点见 M2
+    那一节
+  - **M3 · 差异表文件访问那一行**：观察法从「页面里 `fetch` 一个 `file://`」改成「原生侧把主帧导航到应用私有
+    目录里一个已知的 `file://` 文件」，并要求文件放 `filesDir`、每次观察重新导航、这次导航绕开 M4 的闸门。
+    「21 格」改成「20 格」（iOS 那格不适用）。落点见 M5 · 差异表
+  - **M4 · 宿主单实例**：新增「宿主」要求、三端落点表（Android `singleTask` + `onNewIntent`）、「故意做坏事」
+    第十二行、不进输出的判据从五条变六条、「要试出来的」最后一行（Android 用 `am start -n` 当别的入口）。
+    落点见 M4 那一节
+  - README 的 M4 那一行跟着改成「十二处故意触发」
+- 另外五个（`b7b7647` / `2e27550` / `5ddc786` / `5a423d7` / `a3cecc0`）逐个读过，**不动 Android 的判据**：iOS
+  承载 origin 拍成 `crab://ios.crab.invalid`（README 加一句「三端 origin 各不相同，页面比对 origin 要认三个值」）、
+  鸿蒙档位维持 23 与模拟器能当验收面、M4「回读日志」那格记上 iOS 已成立 / 鸿蒙未成立，其余是 `进度.md` 快照
+- 本仓送去的第 1、2、4、5 条待回流都进了 `922ffd3`，对照见 [`docs/待回流-pro.md`](docs/待回流-pro.md) 的
+  「已回流」；第 3 条（`textZoom`）还占着位，另新开一条第 6 条（入口页后退不销毁容器）
+- 再往前：`e857625..287c92d` 那一批四条 Android 平台事实也产自本端，同见「已回流」
 
 ## 运行记录 · 十六行第一遍（2026-09-21）
 
@@ -68,19 +67,22 @@ permission PASS
 [`docs/PITFALLS.md`](docs/PITFALLS.md) 的「环境」一节：本机没有 `cmdline-tools` / system-image / AVD，
 `probe.sh` 在本机起不来，所以本机的 AI 会话只能跑编译、单测、静态检查那三样。
 
-**十六行不覆盖的还有六格**，逐格记在下面各节。`DOCUMENT_START_SCRIPT` 那一格 2026-09-23 读到了值，
+**十六行不覆盖的还有七格**，逐格记在下面各节。`DOCUMENT_START_SCRIPT` 那一格 2026-09-23 读到了值，
 切后台那一行 2026-09-24 看过一次（原始输出待补），其余还没跑：
 
 | 还欠什么 | 记在哪一节 |
 | --- | --- |
 | `DOCUMENT_START_SCRIPT` 的取值（注入走原生还是兜底） | M3 · 注入走哪条路。**已读到 `true`**（2026-09-23）：走原生，兜底那条没跑过 |
 | 切后台 / 最近任务划掉 / 入口页直接后退 | M4 · 三格。切后台已观察到停播、停表（2026-09-24，原始输出待补）；另两格未跑 |
+| 再次启动回到原容器（pro 922ffd3 新加的第十二行） | M4 · 那一格。`singleTask` 已落地，未跑 |
 | 渲染进程终止两次 | M4 · 那一格 |
 | 入口文件挪走看错误态 | M4 · 那一格 |
 | 加载后生效差异表 Android 那一列 | M5 · 差异表 |
 | 文字跟不跟随系统字号 | M3 · 缩放那一行 |
 
-这几格往后不再手敲 `adb` 抄输出，改成人只操作、日志自动落盘，规划见「后续 · 模拟器那一半的日志自动落盘」。
+**宿主改了 `launchMode` 与返回键之后，上面那十六行要在工作机上回归一遍**才还算数，顺序排在
+[`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「零」。这几格往后不再手敲 `adb` 抄输出，改成人只操作、日志自动落盘，
+规划见「后续 · 模拟器那一半的日志自动落盘」。
 
 ## 状态记号
 
@@ -92,7 +94,7 @@ permission PASS
 | 只剩走查 | pro 明写在容器阶段没有观察面，M5 里要照实写「未验证」 |
 
 **「已落地」仍然不等于「过了」，「已核实」才是。** 十六条已经在真容器里跑过一遍，但它们只覆盖十六条；
-上面那六格大多还没跑，别拿退出码 0 当整个 M2–M4 都过了。
+上面那七格大多还没跑，别拿退出码 0 当整个 M2–M4 都过了。
 
 ## M1 · 装到模拟器
 
@@ -134,25 +136,20 @@ M1 还有三件一次性动作（pro 的「动工之前」，顺序不能颠倒�
 | 承载 origin 单点定义要有**一条可执行检查** | `HostingOriginSingleDefinitionTest` 扫源码树（定义处 + 探针页期望值，第三处即红） | 已落地 |
 | 探针页 / `probe.sh` / slug 清单三者对齐 | `ProbeContractAlignmentTest`（`.html` / `.js` / `.sh` 没有别的兜底） | 已落地 |
 | 越界素材真实存在（否则 `escape` 测不到东西） | `assets/outside/out-of-bounds.txt`，内容 `OUT_OF_BOUNDS` | 已落地 |
-| Safe Browsing 关掉（Android 独有，pro 要求显式设置 + 取值进单测） | `WebSettingsSpec.SAFE_BROWSING_ENABLED = false`（`WebSettingsSpecTest`）→ `applyCrabSpec` 里 `safeBrowsingEnabled =` | 取值已落地 / 写入只剩走查 |
+| Safe Browsing 关掉（Android 独有，pro M2 定了手段：框架的 `setSafeBrowsingEnabled(false)`，不走 compat、不取 manifest） | `WebSettingsSpec.SAFE_BROWSING_ENABLED = false`（`WebSettingsSpecTest`）→ `applyCrabSpec` 里 `safeBrowsingEnabled =` | **只剩走查**（取值已落地；写入没有观察面，与 pro M5「Android 的 Safe Browsing 只剩走查」那条对上，M5 里 Android 那一列明写未验证） |
 
-**pro 那条「关 Safe Browsing 的正确手段待核」已经能答掉**，判据是本机 SDK 与 aar，不用模拟器：
+**这一格 2026-10-09 对着 pro `922ffd3` 核过一次，代码不用动**：
 
-- `WebSettings.setSafeBrowsingEnabled(boolean)` 在 `platforms/android-37.0/android-stubs-src.jar` 里
-  **没有 `@Deprecated`**。同一个文件里 `setPluginState` / `setLightTouchEnabled` / `getForceDark` 都带着
-  这个注解，所以「没带」是有意义的信号，不是 stub 把注解洗掉了。这就是现行手段
-- `androidx.webkit.WebSettingsCompat.setSafeBrowsingEnabled` 在 1.17.0 里也在、也没弃用，但 javap 读它的
-  字节码：先问 `ApiFeature$O.isSupportedByFramework()`，成立就直接转给框架那个 setter。`minSdk = 37` 下
-  这个分支恒真，走 compat 只是多一次判断，**所以用框架的 setter，不引 compat**
-- manifest 的 `android.webkit.WebView.EnableSafeBrowsing` meta-data **本机核不了**：这个字符串在
-  `android.jar` 里一次都不出现（它由 WebView provider 读，不在 SDK stub 里），stub 源码 jar 不带 javadoc，
-  而 `developer.android.com` 在本环境连不上。它还是**应用级**开关、没有可进单测的取值，与 pro 要的
-  「显式设置、取值进单测」不同形状。**不取它**，这一格记「未核，且不需要」
+- 写入走的是框架那个 setter：`applyCrabSpec` 里的 `safeBrowsingEnabled = …` 编成的字节码是
+  `invokevirtual android/webkit/WebSettings.setSafeBrowsingEnabled:(Z)V`（`javap -c` 读
+  `CrabWebSettingsKt.class`）
+- 全仓没有 `WebSettingsCompat`，manifest 里也没有 `android.webkit.WebView.EnableSafeBrowsing` meta-data
+- 取值有单测：`WebSettingsSpecTest` 的「Safe Browsing 关」断言 `SAFE_BROWSING_ENABLED` 为 false
 
-`safeBrowsingEnabled = false` 这一行**没有观察面**：Safe Browsing 要拦下来才看得见，而承载 origin 落在
-`.invalid` 下、容器一条真实网络请求都不发，拦不到东西。所以它与 SSL 那条同类，M5 里按走查记。
-上面这四条是平台事实，攒在 [`docs/待回流-pro.md`](docs/待回流-pro.md) 等着回流，**本仓不动 pro 的
-`plan/`**。
+手段为什么是这个（框架 setter 没弃用、compat 在 `minSdk = 37` 下恒转给框架、manifest 那条是应用级且没有
+可测取值）已经进了 pro M2 的「平台事实」，这里不再复述。**没有观察面**也是 pro 写定的：要看见它得有一次被
+拦下来，而承载 origin 落在 `.invalid` 下、容器一条真实网络请求都不发。所以「写入」那半只剩走查，与 SSL 那条
+同类。
 
 `scripts/probe.sh` 输出的十六行里，前六行就是这一节。**别把「六行 PASS」读成「M2 过了」**：pro 的 M2
 还要求承载 origin 上不发真实网络请求，那一条在本端的形状是「拦截点未命中也自己回 404」，已经由
@@ -170,7 +167,7 @@ M3 添的是第七、八条断言（`inject-order` / `inject-scope`）。**六�
 | JavaScript 与 DOM storage 开 | 同上两个字段 | 已核实（探针页本身跑起来了 + `storage` PASS） |
 | 混合内容 `NEVER_ALLOW` | `MixedContentPolicy` → `WebSettings.MIXED_CONTENT_NEVER_ALLOW`（常量值 0/2/1 由 javap 核过） | 取值已落地 / 写入**十六行不覆盖**（探针页没有 http 子资源，见差异表那节） |
 | 文件与内容访问四项全关 | 同上四个字段 | 取值已落地 / 写入**十六行不覆盖**（探针页没有 `file://` 请求） |
-| 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实（六格之一） |
+| 缩放三项关 + `textZoom = 100` | 同上；文字大小跟不跟随系统字号要在模拟器上看 | 取值已落地 / 写入待模拟器核实（七格之一） |
 | 多窗口 / 脚本开窗 / 定位**显式开** | 三项 true，为的是 M4 的回调能被调用后当场拒绝并留日志 | 已核实（`nav-blank` 与 `permission` 都 PASS——回调被调用了才有那几行日志） |
 | UA 追加 `Crab/0.1.0`，不替换整串 | `UserAgent.decorate`（`UserAgentTest`）；版本号由 `:app` 的 `BuildConfig.VERSION_NAME` 传入 | 已落地 + 已核实（2026-09-23 整串抄下：结尾 `Crab/0.1.0`，系统 UA 完整保留，见下） |
 | 页面开口之前注入，`inject-order` 成立 | `DocumentStartScript.source` + `WebViewCompat.addDocumentStartJavaScript`；入口页首行 `<script>` 记快照 | 已核实（`inject-order` PASS） |
@@ -194,7 +191,7 @@ CRAB-ENV UA: Mozilla/5.0 (Linux; Android 10; K; wv) AppleWebKit/537.36 (KHTML, l
 - 这串是**实例 A 的基线**。差异表 UA 那一格要的是实例 B 的前后对照，仍是「未填」；M5 三端并排比 UA
   用的就是这一串
 
-### M3 · 注入走哪条路（六格之一，已读到 `true`）
+### M3 · 注入走哪条路（七格之一，已读到 `true`）
 
 pro 的 M3「要试出来的」明写这一格**不能拿 `inject-order` 绿当答案**：原生注入与兜底都要求
 `injected == 1`，那是设计意图（两条叠加就是 bug），所以绿了认不出走的是哪条。支持与否只能另打一次。
@@ -254,7 +251,7 @@ M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin
 | 判据 | 本端落点 | 状态 |
 | --- | --- | --- |
 | 同 origin 跳转放行 | `NavigationGate.decide` → `Allow`；`NavigationGateTest` | 已落地 + 已核实（`nav-same-origin` PASS） |
-| 返回键回上一页，到底交回宿主 | `MainActivity.backCallback`（`canGoBack()` → `goBack()`，否则 `remove()` 后重新分发） | 回上一页已核实（`nav-back` PASS）/ **到底交回宿主待核实**（六格之一） |
+| 返回键回上一页，到底交回宿主 | `MainActivity.backCallback`（`canGoBack()` → `goBack()`，否则暂时关掉自己、重新分发、再打开） | 回上一页已核实（`nav-back` PASS，那时还是 `remove()` 的写法）/ **到底交回宿主待核实** |
 | 跨 origin 拦下 + 一行 `CRAB-NAV nav-cross-origin`，**不交系统浏览器** | `NavigationGate` → `Deny`；`ContainerCoordinatorTest` 断言 `openInSystem` 没被调 | 已落地 + 已核实（`nav-cross-origin` PASS） |
 | 看起来像子域的 `…invalid.evil.com` 判为跨 origin | `HostingOrigin.isHostingOrigin` 比 host 全等，不做前缀匹配；`NavigationGateTest` | 已落地 |
 | `_blank` 与 `window.open` 各留一行 `nav-blank` | `onCreateWindow` → `onWindowOpenRequest`（返回 false = 不开窗）；`probe.sh` 要求这行 **≥2 条** | 已落地 + 已核实（`nav-blank` PASS，即 ≥2 行确实出来了） |
@@ -262,18 +259,40 @@ M4 补齐剩下八条断言（`nav-same-origin` / `nav-back` / `nav-cross-origin
 | 未知 scheme 拦下 + 一行，**且进程还活着** | 同 `Deny` 一条路；`probe.sh` 额外查 `pidof net.xiaoluzhu.crab` | 已落地 + 已核实（`nav-unknown-scheme` PASS，`pidof` 是脚本自己查的） |
 | 三种对话框各一行 `CRAB-DLG`，`JsResult` **必须回一次** | `CrabWebChromeClient` 三个 `onJs*`，回值在 `setOnDismissListener` 里统一给（关按钮、点外面也算） | 已落地 + 已核实（`dialog` PASS：三个原生框都弹了出来、页面三个答案都收到了） |
 | 权限一律拒绝 + 每项一行 `CRAB-PERM` | `onPermissionRequest`（`deny()`）与 `onGeolocationPermissionsShowPrompt`（`invoke(origin, false, false)`）两处都接 | 已落地 / 定位那条已核实（`permission` PASS）/ 相机麦克风只剩走查 |
-| 主文档加载失败进错误态 + `CRAB-ERR load <码>` | `ContainerStateMachine` 过滤子帧；`onReceivedError` 与 `onReceivedHttpError` 都转 | 已落地 / **删入口文件那一遍待核实**（六格之一） |
+| 主文档加载失败进错误态 + `CRAB-ERR load <码>` | `ContainerStateMachine` 过滤子帧；`onReceivedError` 与 `onReceivedHttpError` 都转 | 已落地 / **删入口文件那一遍待核实**（七格之一） |
 | 错误界面文案「页面没能打开」+「重试」按钮 | `MainActivity.ErrorScreen` + `values/strings.xml`（场景与错误码只进 logcat，不上屏） | 已落地 / **上屏待核实**（与上一格同一遍） |
-| 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / **待核实，且可能整条不成立**（六格之一，见下） |
+| 渲染进程终止换一次 WebView，第二次进错误态 | `RenderProcessRecovery`（上限一次、同一次终止的重复回调幂等）；`onRenderProcessGone` **必须返回 true** | 已落地 / **待核实，且可能整条不成立**（七格之一，见下） |
 | 重试回 Loading、重新加载、额度给满 | `ContainerCoordinator.onRetry`；`ContainerCoordinatorTest` | 已落地 |
 | SSL 错误只 `cancel()`，一次也不许 `proceed()` | `CrabWebViewClient.onReceivedSslError` | 已落地 / **这条路没有观察面**（见下） |
 | 切后台媒体停播、计时器停 | `MainActivity.onPause` → `webView.onPause()` + `pauseTimers()`；观察面是探针页的循环音与每秒 tick | **已观察到，原始输出待补**（2026-09-24 工作机 API 37 AVD：点「播放声音」后按 Home，声音停，`onPause()` 生效；从最近任务切回，tick 接着之前的编号走，`pauseTimers()` 生效。tick 日志的时间戳断口还没留下，重跑后补原文） |
-| 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | **待核实**（六格之一，最近任务划掉那一遍） |
+| 销毁容器不崩、不泄漏 | `CrabContainer.destroy()`：**先从视图树摘除再 `destroy()`** | **待核实**（最近任务划掉那一遍） |
+| 宿主单实例：再次启动回到原容器、不重载（pro 922ffd3） | manifest 里 `MainActivity` 显式 `android:launchMode="singleTask"`；`onNewIntent` 只打一行 `CRAB-ENV onNewIntent <Intent>`，新请求的内容 pro 留给 FE 接入时定 | 取值已落地（`HostSingleInstanceTest`）/ **待核实**（RUNBOOK「四 · 再次启动」） |
 
 **这十六行覆盖到的与没覆盖到的，界线就在「有没有按钮」。** 十六条断言全是探针页上的按钮 + logcat 回读，
-所以导航、对话框、权限那九格一遍跑完；而「切后台」「最近任务划掉」「在入口页直接后退」「删掉入口文件」
-「杀渲染进程」这五件事探针页上没有按钮，得按 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 另外走。除了切后台
-看过一次，其余四件还没走。
+所以导航、对话框、权限那九格一遍跑完；而「切后台」「最近任务划掉」「在入口页直接后退」「再次启动」
+「删掉入口文件」「杀渲染进程」这六件事探针页上没有按钮，得按 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 另外走。
+除了切后台看过一次，其余五件还没走。
+
+### 宿主单实例怎么落的
+
+pro M4 的落点表写的是「宿主 Activity 的 `launchMode` 取 `singleTask`，再次启动走 `onNewIntent`」，并要求取值
+照 M3 的规矩显式写、能进单测或构建期检查的进。本端：
+
+- **取值**：`app/src/main/AndroidManifest.xml` 里显式写 `singleTask`（不写就是默认的 `standard`，恰好是多开的
+  那一种）。`HostSingleInstanceTest` 解析这份 manifest，断言三件事：宿主 `launchMode` 是 `singleTask`、它就是
+  带 `MAIN` + `LAUNCHER` 的那个入口、`MainActivity` 接了 `onNewIntent`。`launchMode` 由系统服务端读，JVM 里
+  没有别的东西会因为它取错而失败，所以只能扫文件
+- **为什么不是 `singleTop`**：它只在实例已经在栈顶时复用，从别的任务进来照样新建；pro 定的就是 `singleTask`
+- **`onNewIntent` 里只有一行诊断**：pro 要核「新请求有没有走到这个回调」，而它在屏幕上什么都不改，所以打
+  一行 `CRAB-ENV onNewIntent <Intent>`。前缀写成字面量、不进 `CrabLog`，与 `CrabContainer` 那行 `CRAB-ENV`
+  同理，读到结论可以删
+- **连带改的返回键**（出口 1，本端实现）：原先到底时 `remove()` 掉 `backCallback`。Android 12 起，带
+  `MAIN` + `LAUNCHER` 的任务根在这一下只是挪到后台、实例不销毁（`Activity.onBackPressed` 的 javadoc），再点图标
+  回来走 `onNewIntent`、不再 `onCreate`，回调就再也挂不上——第二页上的返回键直接退到桌面。`singleTask` 让
+  「回来的是原实例」从「看怎么回来」变成「一定」，所以这一格必踩。现在改成分发那一下暂时 `isEnabled = false`，
+  分发完马上打开。设备上的表现排在 `back-at-root` 那一遍
+- **「入口页后退之后容器其实还活着」算不算 pro 说的「交宿主关掉容器」**：这是判据怎么读的问题，本端不自决，
+  记在 [`docs/待回流-pro.md`](docs/待回流-pro.md) 第 6 条，现在按平台默认走
 
 ### M4 留下的四处不确定，照实记
 
@@ -346,7 +365,7 @@ pro 的 M5 是三端汇合，**汇合本身不在本仓**（贴到 pro 的 issue
 | 15 | `dialog` | 页面读到三种答案 + logcat 三行 `CRAB-DLG` | PASS |
 | 16 | `permission` | 页面拿到失败回调 + 一行 `CRAB-PERM` | PASS |
 
-退出码 0。**十六格齐了不等于 M2–M4 过了**，差的六格在本文件开头那张「还欠什么」表里。
+退出码 0。**十六格齐了不等于 M2–M4 过了**，差的七格在本文件开头那张「还欠什么」表里；改了 `launchMode` 之后这一列也要回归一遍才还算数。
 
 ### 加载后生效差异表 · Android 那一列
 
@@ -355,15 +374,17 @@ pro 的做法是两个实例：A 加载前设成目标值当基线，B 加载前
 
 **本仓没有留这条路**：`CrabWebSettings.applyCrabSpec` 在 `createWebView()` 里一次写完，容器不提供
 「加载后再改一项」的入口——那正是 pro「六项全部在首次加载之前落定」要求的形状。所以这七格要填，得临时
-造一个实例 B（在 `MainActivity` 里加一段临时代码，跑完删掉），不是跑一遍 `probe.sh` 就能得到的。
-步骤写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「七」。
+造一个实例 B，不是跑一遍 `probe.sh` 就能得到的。B 已经写成一份补丁 [`docs/实例B.patch`](docs/实例B.patch)
+（`InstanceB.kt` 新文件 + `MainActivity` 两行 + manifest 两样），**不进提交**：工作机上 `git apply` 上去跑、
+`git apply -R` 撤掉。本机打上去编译、格式、lint 都过过一次，**没在设备上跑过**。步骤写在
+[`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「七」。
 
 | 项 | Android | 怎么观察（pro 定的） |
 | --- | --- | --- |
 | JavaScript | 未填 | 一段脚本能否改掉页面上的一个显示 |
 | DOM storage | 未填 | `localStorage.setItem` 是否抛 |
 | 混合内容 | 未填 | 引一个 http 子资源。模拟器上宿主机是 `10.0.2.2`，不是 `127.0.0.1` |
-| 文件访问 | 未填（**按这个观察法分辨不出档位**，见下） | `fetch` 一个 `file://` URL 能否读到 |
+| 文件访问 | 未填 | 原生侧把主帧导航到应用私有目录里一个已知的 `file://` 文件，看打不打得开（pro `922ffd3` 改的） |
 | 有声媒体自动播放 | 未填 | 一个有声 `<video autoplay>` 会不会自己播 |
 | 缩放 | 未填 | 双指手势人工看；顺带把系统字号调大一档，看文字变不变 |
 | UA | 未填 | `navigator.userAgent` 打印出来（探针页的 `CRAB-ENV` 那行已经在打） |
@@ -372,15 +393,24 @@ pro 的做法是两个实例：A 加载前设成目标值当基线，B 加载前
 探针页只有 UA 与 `typeof localStorage` 两项在打（实例 A 的整串已抄下，但那是基线、不是对照），混合内容、`file://`、
 `<video autoplay>` 三样探针页里根本没有。**差异表要的东西比十六条断言多，这一点别混。**
 
-**「文件访问」那一格跑了也填不进四档。** `setAllowFileAccess` 的 javadoc 写明它管不到
-`file:///android_asset`，而页面在 `https://` 上、`fetch` 本来就拿不到 `file://`，所以实例 B 开与关都是
-「读不到」。换观察法动的是三端判据，回 pro 议，见 [`docs/待回流-pro.md`](docs/待回流-pro.md) 第 4 条。
-**混合内容那一格也有个前提**：manifest 里没有 `INTERNET` 权限，造实例 B 时要临时加上，否则同样是
-设成什么都加载不到。两件事的做法都在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「七」。
+**文件访问那一格照 pro 的新观察法落**，三处要求各落在补丁的一个地方：
 
-### 五处不许糊过去 · 本端结论
+| pro 的要求 | 本端怎么落 |
+| --- | --- |
+| 目标文件放在应用私有目录（不放 `android_asset`，`setAllowFileAccess` 管不到那里） | `InstanceB.beforeFirstLoad` 每次启动把 `crab-b.html` 写进 `filesDir`，打开时自己打一行 `CRAB-ENV B file opened` |
+| 这次导航不得被 M4 的闸门拦下，怎么绕属端内自定 | 原生 `webView.loadUrl(file://…)`。`shouldOverrideUrlLoading` 对应用自己 `loadUrl` 的导航不回调（`WebViewClient` 的 javadoc），闸门根本没被问到；证据是这一跳没有 `CRAB-NAV` 行。**不在 `NavigationGate` 里开口子**——那是常驻代码，B 跑完要一行不留 |
+| 每次观察都是一次新的导航，看完回到探针页 | `b file` 一次导航一次，`b entry` 走「重试」回探针页（打不开时容器在错误态，只 `loadUrl` 切不回界面） |
 
-pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（**不因为只是一半就省掉**）：
+只翻 `allowFileAccess`：取值表里另外三个文件与内容开关同样是关，但主帧导航到 `file://` 只受这一项管。
+目标值是关，所以 A 的基线预期是「打不开」，进错误态、一行 `CRAB-ERR load <码>`。
+
+**混合内容那一格有个前提**：manifest 里没有 `INTERNET` 权限，也没开明文，补丁里两样都临时加了，否则
+设成什么都加载不到。
+
+### 六处不许糊过去 · 本端结论
+
+pro 的 M5 点名了六处（`922ffd3` 加了 Safe Browsing 那一处），其中五处与 Android 有关，逐条给结论
+（**不因为只是一半就省掉**）：
 
 1. **渲染进程终止：未验证。** 取法在 `docs/RUNBOOK.md`（`adb root` + `kill -9`）。先看 `adb root` 拿不拿
    得到：拿不到（带 Google Play 的镜像一律拒绝）这条在 Android 上整条不成立，写「该端该条未验证」，
@@ -396,15 +426,17 @@ pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（
 4. **相机与麦克风的拒绝：只剩走查。** 探针页只按定位那一条（pro 已定，2026-09-21 PASS）。代码上
    `onPermissionRequest` 对 `request.resources` 每一项打一行再整体 `deny()`，与定位走同一条路，
    但没有观察面，按未验证记
-5. 第五处是鸿蒙的，与本端无关
+5. **Safe Browsing：只剩走查。** 取值有单测（`WebSettingsSpecTest`），写入走框架的
+   `setSafeBrowsingEnabled`（`javap` 核过），没有观察面，Android 那一列明写未验证。见 M2 那一节
+6. 第六处是鸿蒙的，与本端无关
 
 ### 汇合时要交出去的三样
 
 | 交什么 | 从哪来 | 现在的形状 |
 | --- | --- | --- |
 | 十六条断言逐项结果 | `./scripts/probe.sh` 在 API 37 模拟器上的输出 | **有了**：2026-09-21 那一遍，15 PASS + 1 MANUAL，退出码 0。原文在上面那节运行记录 |
-| 加载后生效差异表 Android 那一列 | 手工造实例 B | 七格全「未填」。要跑 `docs/RUNBOOK.md` 的「六」，本机跑不了 |
-| 每条要求的核实记录 | 本文件 M1–M5 各节 | 已成形，状态记号见开头。还欠六格 |
+| 加载后生效差异表 Android 那一列 | 手工造实例 B | 七格全「未填」。要跑 `docs/RUNBOOK.md` 的「七」（实例 B 是 `docs/实例B.patch`），本机跑不了 |
+| 每条要求的核实记录 | 本文件 M1–M5 各节 | 已成形，状态记号见开头。还欠七格 |
 
 不另设汇总表——本文件就是那份记录，pro 那边只收结果与平台事实。等着回流 pro 的平台事实攒在
 [`docs/待回流-pro.md`](docs/待回流-pro.md)。
@@ -428,11 +460,11 @@ pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（
 | `background` | 四·切后台 | 起应用；人点「播放声音」→ Home → 等十秒 → 从最近任务切回 |
 | `destroy` | 四·划掉 | 起应用；人在最近任务里划掉再从图标起 |
 | `back-at-root` | 四·入口页后退 | 起应用；人在入口页直接按返回键，再从图标回来进第二页后退（后一半是 RUNBOOK 四「紧接上一格」那行）；结束时存一份 `dumpsys activity activities` |
-| `multi-instance` | 四·多实例 | 先只带 `-n` 起，人按 Home 再点图标，存一份 `dumpsys activity activities`；再带 `MAIN` + `LAUNCHER` 重复一遍 |
+| `multi-instance` | 四·再次启动 | 先只带 `-n` 起，人按 Home 再点图标，存一份 `dumpsys activity activities` 并数新增的 `CRAB-ENV onNewIntent`；再带 `MAIN` + `LAUNCHER` 重复一遍。单实例下两遍都应当只有一条 `Hist` |
 | `font-scale` | 六 | `font_scale` 设 1.30 再起应用，**退出时（含 Ctrl-C）一律改回 1.00** |
 | `render-gone` | 三 | 先 `adb root`，拒绝就把拒绝原文落盘并结束；拿到了就找渲染进程（按起应用前后多出来的 `sandboxed_process` 找）、`kill -9`，人确认页面恢复后回车再杀第二次 |
 | `missing-entry` | 二 | 挪走入口页、绕过 `check.sh` 直接装；**退出时放回并重装**，放回失败要大声报 |
-| `free` | — | 什么都不做，只录。临时造实例 B 那一类用它 |
+| `free` | 七 | 什么都不做，只录。实例 B（`docs/实例B.patch`）用它，B 的动作在另一个终端里敲 |
 
 每次跑产出一个目录 `runs/<YYYYMMDD-HHMMSS>-<场景>/`，结束时再打一个同名 `.tar.gz`：
 
@@ -469,9 +501,25 @@ pro 的 M5 点名了五处，其中四处与 Android 有关，逐条给结论（
 `check.sh` 绿说明不了它能用。**每个场景都在工作机上真跑出一个 `runs/` 目录、AI 能从里面判出结论，
 才算落地。** 落地之后 RUNBOOK 各节的手敲命令换成对应场景的一条命令。
 
-**现状（2026-09-24）**：八个场景加 `multi-instance` 都写了，`probe.sh` 落盘也改了，只在一个假 `adb` 上
-空跑过流程：场景分发、备注转义、`shot`、Ctrl-C / TERM 之后改回 `font_scale`、`missing-entry` 安装失败时
-放回入口页。**一个都没在工作机上真跑，按上面的定义都不算落地**，RUNBOOK 的手敲命令先留着。
+**现状（2026-10-09）**：九个场景都写了，`probe.sh` 落盘也改了，只在一个假 `adb` 上空跑过流程（2026-09-24：
+场景分发、备注转义、`shot`、Ctrl-C / TERM 之后改回 `font_scale`、`missing-entry` 安装失败时放回入口页）。
+10-09 跟着单实例改了 `multi-instance` 与 `back-at-root` 的清单，`multi-instance` 多数一样 `onNewIntent` 的行数。
+**一个都没在工作机上真跑，按上面的定义都不算落地**，RUNBOOK 的手敲命令先留着。
+
+### 工作机上的跑法（每格一条命令，按这个顺序）
+
+完整的表（每格看完要回答什么）在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md) 的「零」，这里只列顺序：
+
+1. `./scripts/capture.sh --install env`，再 `./scripts/capture.sh background`
+2. `./scripts/probe.sh`——**回归**：确认 `launchMode` 与返回键改完之后十六行与 09-21 那一遍逐行相同
+3. `./scripts/capture.sh multi-instance`
+4. `./scripts/capture.sh destroy` / `back-at-root` / `font-scale`
+5. `./scripts/capture.sh render-gone`
+6. `./scripts/capture.sh missing-entry`
+7. `git apply docs/实例B.patch` → `./scripts/capture.sh --install free`（差异表七格，另一个终端照 RUNBOOK「七」
+   敲 `b_start` / `b`）→ `git apply -R docs/实例B.patch` → `./gradlew --quiet :app:installDebug`
+
+跑完把 `runs/*.tar.gz` 带回这处放进 `runs/`，AI 逐个判、摘原文进本文件对应各格，并注明摘自哪个目录。
 
 ## 对账：欠着的几笔，照实记
 
@@ -481,7 +529,7 @@ pro 的 `开工.md` 要求每个里程碑收尾把「怎么算过」那几格的
 
 | 欠什么 | 卡在哪 |
 | --- | --- |
-| 六格里的五格：切后台 / 最近任务划掉 / 入口页直接后退、删入口文件看错误态、渲染进程终止两次、系统字号、差异表 | 要 AVD。这处连 `cmdline-tools` 都没有；要打开这条路得在 SDK Manager 里装 `cmdline-tools` + 拉一个 API 37 的 system-image |
+| 七格里的六格：切后台 / 最近任务划掉 / 入口页直接后退、再次启动、删入口文件看错误态、渲染进程终止两次、系统字号、差异表；外加改了 `launchMode` 之后十六行的回归 | 要 AVD。这处连 `cmdline-tools` 都没有；要打开这条路得在 SDK Manager 里装 `cmdline-tools` + 拉一个 API 37 的 system-image |
 | 结果贴到 pro 的 issue | `gh` 未登录；且工作机的 remote 是 HTTPS、GitHub 在那台上被 reset，推不上去。提交与推送只能从这处走 |
 | 平台事实回流 pro | 本次会话的边界仍是「pro 仓一个字不改」（唯一例外是搬完之后删掉 `交接-and.md`，那是 `开工.md` 定的规矩）。攒着的见 [`docs/待回流-pro.md`](docs/待回流-pro.md) |
 

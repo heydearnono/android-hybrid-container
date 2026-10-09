@@ -5,7 +5,7 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 
 上游规划在 `~/Desktop/github/Prospect`（下称 `pro`）：`README.md` + `plan/` 五份 + `开工.md`。
 **判据只在那边，本仓不复述、也不改它。** 本仓的第一份产出是 [`TASKS.md`](TASKS.md)——把每个里程碑
-「怎么算过」逐条翻译成 Android 任务，并记着按的是 pro 哪个版本。
+「怎么算过」逐条翻译成 Android 任务，并记着按的是 pro 哪个版本（现在是 `922ffd3`）。
 
 ## 三条纪律，端侧不许自己动
 
@@ -38,9 +38,11 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 「待模拟器核实」写进 `TASKS.md`，**不要假装验证过**。要打开这条路，需要用户在 SDK Manager 里装
 `cmdline-tools`，再拉一个 **API 37 的 system-image** 建 AVD（minSdk 37 抬高了验收门槛）。
 
-那一半怎么跑写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)：`probe.sh` 里的六步人工步骤（**这六步已经在工作机
-上跑过一遍，十六行齐**），加上还没跑过的那几处——「删掉入口文件」「杀渲染进程两次」「切后台 / 销毁 /
-在入口页直接后退」「开机读 `CRAB-ENV` 那两行」「系统字号」「差异表实例 B」。**`probe.sh` 不代按**——
+那一半怎么跑写在 [`docs/RUNBOOK.md`](docs/RUNBOOK.md)：开头的「零」排好了工作机上的顺序（每格一条
+`capture.sh` / `probe.sh`）；`probe.sh` 里的六步人工步骤**已经在工作机上跑过一遍，十六行齐**（宿主改了
+`launchMode` 之后要回归一遍），加上还没跑过的那几处——「删掉入口文件」「杀渲染进程两次」「切后台 / 销毁 /
+在入口页直接后退」「再次启动」「系统字号」「差异表实例 B」。实例 B 是一份临时补丁
+`docs/实例B.patch`，`git apply` 上去跑、`git apply -R` 撤掉，**不进提交**。**`probe.sh` 不代按**——
 代按（`adb shell input tap`）坐标一变就点在别处，而它照样会打出 PASS。
 
 **WebView 是这条边界上最危险的地方。** `android.webkit` / `androidx.webkit` 在单测里是 `android.jar`
@@ -86,6 +88,9 @@ Crab 容器的 Android 一端，**全部由 AI 开发**。标识 `net.xiaoluzhu.
 - **远程调试开关取构建类型，不许写死。** `RemoteDebugging.enabledFor(BuildConfig.DEBUG)` →
   `WebView.setWebContentsDebuggingEnabled`，调用点在 `CrabApplication`（那个开关是进程级的，
   跟着某个 WebView 实例走会漏掉换过之后的那个）。`AppDebugSwitchTest` 扫源码盯着这一句
+- **宿主单实例。** `MainActivity` 显式取 `launchMode = singleTask`，再次启动走 `onNewIntent`（pro M4 的落点
+  表）；`HostSingleInstanceTest` 读 manifest 盯着。返回键到底时**不许 `remove()` 回调**：Android 12 起任务根
+  后退只是挪到后台，实例回来不再 `onCreate`，回调就再也挂不上了
 - **`.js` / `.html` 没有任何自动化兜底**（不在 Spotless 范围、没有 JS lint）。探针页与 Kotlin 侧的对应
   关系（slug 清单、`<!--CRAB-INJECT-->` 标记、`window.__CRAB__` 的形状）只能靠单测扫文本兜着，改一边
   必须改另一边
